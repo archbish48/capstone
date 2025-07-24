@@ -26,6 +26,7 @@ public class Notification { // 알림 저장용 테이블
     @ManyToOne(fetch = FetchType.LAZY)
     private Notice notice;
 
+    @Column(name = "`read`")
     private boolean read = false;
     private LocalDateTime createdAt;
 

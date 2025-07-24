@@ -31,7 +31,10 @@ public class SecurityConfig {
 
                         // notices (공지사항) 권한 규칙
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()               // 열람 자유
-                        .requestMatchers("/notices/**").hasAnyRole("MANAGER", "ADMIN")     // 작성, 수정, 삭제는 MANAGER, ADMIN 등급만 가능 (권한 등급 범위는 나중에 조정 가능)
+                        .requestMatchers(HttpMethod.POST, "/notices/**").hasAnyRole("MANAGER", "ADMIN") // POST, PATCH, DELETE 모두 MANAGER 와 ADMIN 등급만 가능
+                        .requestMatchers(HttpMethod.PATCH, "/notices/**").hasAnyRole("MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/notices/**").hasAnyRole("MANAGER", "ADMIN")
+
 
                         // 댓글·리액션은 로그인 필요
                         .requestMatchers("/community/*/reactions").authenticated()

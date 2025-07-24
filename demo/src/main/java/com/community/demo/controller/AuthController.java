@@ -1,7 +1,6 @@
 package com.community.demo.controller;
 
-import com.community.demo.dto.LoginRequest;
-import com.community.demo.dto.SignupRequest;
+import com.community.demo.dto.*;
 import com.community.demo.service.LoginService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -22,7 +21,7 @@ public class AuthController {
 
     // 이메일 인증번호 요청
     @PostMapping("/email/request")
-    public ResponseEntity<String> requestAuthCode(@RequestBody @Valid LoginRequest loginRequest) {
+    public ResponseEntity<String> requestAuthCode(@RequestBody EmailRequest request) {
         loginService.sendEmailAuthCode(request.getEmail());
         return ResponseEntity.ok("이메일로 인증코드가 전송되었습니다.");
     }

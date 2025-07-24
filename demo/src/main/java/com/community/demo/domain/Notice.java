@@ -7,6 +7,8 @@ import lombok.Setter;
 
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -30,6 +32,9 @@ public class Notice {       //공지사항 테이블
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
+
+    @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)    // notices 와 notifications (알림저장용 테이블)은 참조 관계라 CASCADE 적용을 위해 코드 추가
+    private List<Notification> notifications = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -2,6 +2,7 @@ package com.community.demo.jwt;
 
 import com.community.demo.domain.User;
 import com.community.demo.repository.UserRepository;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -10,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -39,15 +41,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
 
             try {
-                Long userId = jwtUtil.validateAccessToken(token);   // ← 서명·만료 검증
+                // Claims 추출
+                Claims claims = jwtUtil.parseAccessToken(token);  // parseAccessToken() 추가 필요
+                Long userId = Long.parseLong(claims.getSubject());
+                String role = claims.get("role", String.class);  // 👈 JWT에서 role 꺼냄
+
+
                 User user = userRepository.findById(userId).orElse(null);
 
                 if (user != null) {   // null-check 후에만 사용
+                    // ROLE_MANAGER → SimpleGrantedAuthority 로 변환
+                    List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
+
                     Authentication auth = new UsernamePasswordAuthenticationToken(
-                                    user,                  // principal : 전체 객체 전달 추천
-                                    null,
-                                    Collections.emptyList()  // 권한 리스트
-                            );
+                            user,
+                            null,
+                            authorities  // 권한 포함
+                    );
                     SecurityContextHolder.getContext().setAuthentication(auth);
 
                     System.out.println("accessToken 수신: " + token);
