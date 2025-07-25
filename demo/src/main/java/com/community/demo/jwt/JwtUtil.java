@@ -13,7 +13,7 @@ public class JwtUtil {
 
     private final String accessSecret = "12345678901234567890123456789012";
     private final String refreshSecret = "abcdefghijabcdefghijabcdefghij12";
-    private final long accessExpirationMs = 1000 * 60 * 15; // 15분 후 액세스 토큰 삭제
+    private final long accessExpirationMs = 1000 * 60 * 10; // 10분 후 액세스 토큰 삭제
     private final long refreshExpirationMs = 1000L * 60 * 60 * 24 * 7; // 7일
 
     public String generateAccessToken(Long userId, RoleType roleType) {

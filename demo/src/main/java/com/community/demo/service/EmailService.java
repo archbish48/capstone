@@ -16,7 +16,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
         message.setSubject("[인증코드] 이메일 인증 요청");
-        message.setText("인증코드: " + code + "\n유효시간은 5분입니다.");
+        message.setText("인증코드: " + code);
 
         mailSender.send(message);
     }
