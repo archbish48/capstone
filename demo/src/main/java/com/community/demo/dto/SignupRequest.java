@@ -10,7 +10,7 @@ public class SignupRequest {
     @NotBlank private String username;
     @NotBlank private String password;
     @Email private String email;
-    @Pattern(regexp = "^[0-9]{10,15}$") private String phone;
+    @NotBlank String Student_number;
     @NotBlank private String department;
 
     private RoleType Role = RoleType.STUDENT;

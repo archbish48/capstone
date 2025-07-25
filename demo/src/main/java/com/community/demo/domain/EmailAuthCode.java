@@ -14,26 +14,31 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class EmailAuthCode {        //이메일 인증 관련 테이블
+public class EmailAuthCode {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String email;
+
     private String code;
-    private LocalDateTime expiresAt;
 
-    private boolean verified = false;   //인증 여부 저장
+    private boolean verified = false;
 
-    public EmailAuthCode(String email, String code, LocalDateTime expiresAt ) {
+    public EmailAuthCode(String email, String code) {
         this.email = email;
         this.code = code;
-        this.expiresAt = expiresAt;
+        this.verified = false;
     }
 
-    public void marKVerified(){
+    public void markVerified() {
         this.verified = true;
     }
 
+    public void resetVerification(String newCode) {
+        this.code = newCode;
+        this.verified = false;
+    }
 }
+

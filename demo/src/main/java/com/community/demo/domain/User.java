@@ -23,7 +23,9 @@ public class User {     //유저 정보 테이블
 
     @Column(nullable = false, unique = true)
     private String email;
-    private String phone;
+
+    @Column(unique = true)
+    private String student_number;
     private String department;                  // 학과
 
 
@@ -41,18 +43,15 @@ public class User {     //유저 정보 테이블
 
 
     // 생성자
-    public User(String username, String password, String email, String phone, RoleType roleType, String department) {      // roleType 만 받도록
+    public User(String username, String password, String email, String student_number, RoleType roleType, String department) {      // roleType 만 받도록
         this.username  = username;
         this.password  = password;
         this.email     = email;
-        this.phone     = phone;
+        this.student_number     = student_number;
         this.roleType  = roleType;
         this.department  = department;
 
         // STUDENT 는 ACTIVE, 그 외는 PENDING
         this.roleStatus = (roleType == RoleType.STUDENT) ? RoleStatus.ACTIVE : RoleStatus.PENDING;
     }
-
-
-
 }

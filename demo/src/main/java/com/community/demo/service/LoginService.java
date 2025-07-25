@@ -15,11 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -33,6 +29,7 @@ public class LoginService {
 
     // 메모리 기반 Refresh Token 저장소 (실제 서비스에선 DB 또는 Redis)
     private final Map<Long, String> refreshTokenStore = new ConcurrentHashMap<>();
+
 
     public LoginService(UserRepository userRepository, JwtUtil jwtUtil, EmailAuthCodeRepository emailAuthCodeRepository, EmailService emailService) {
         this.userRepository = userRepository;
@@ -59,10 +56,26 @@ public class LoginService {
 
     // 이메일 인증번호 전송
     public void sendEmailAuthCode(String email) {
+        //  1. 회원가입 중복 방지 (회원이 이미 존재하면 인증 불가)
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+        }
+
+        //  2. 랜덤 코드 생성
         String code = generate6DigitCode();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
-        EmailAuthCode authCode = new EmailAuthCode(email, code, expiresAt);
-        emailAuthCodeRepository.save(authCode);
+
+        // 3. 기존 인증 기록이 있으면 재사용하며 값만 덮어씀
+        Optional<EmailAuthCode> existing = emailAuthCodeRepository.findTopByEmailOrderByIdDesc(email);
+        if (existing.isPresent()) {
+            EmailAuthCode auth = existing.get();
+            auth.resetVerification(code);  // verified = false, code 갱신
+            emailAuthCodeRepository.save(auth);
+        } else {
+            EmailAuthCode newAuth = new EmailAuthCode(email, code);
+            emailAuthCodeRepository.save(newAuth);
+        }
+
+        //  4. 이메일 전송
         emailService.sendAuthCode(email, code);
     }
 
@@ -70,17 +83,17 @@ public class LoginService {
     //이메일 인증번호 검증(회원가입, 비밀번호 찾기 시 사용)
     public void verifyEmailAuthCode(String email, String code){
         EmailAuthCode authCode = emailAuthCodeRepository
-                .findValidCode(email, code, LocalDateTime.now())
-                .orElseThrow(() -> new IllegalArgumentException("인증코드가 유효하지 않거나 만료되었습니다."));
+                .findByEmailAndCodeAndVerifiedFalse(email, code)
+                .orElseThrow(() -> new IllegalArgumentException("잘못된 인증코드입니다."));
 
-        // 인증 성공으로 마킹
-        authCode.marKVerified();  // verified = true 로 설정하는 함수
+        // 인증 처리
+        authCode.markVerified();
         emailAuthCodeRepository.save(authCode);
     }
 
 
     // 회원가입
-    public void signup(String username, String password, String email, String phone, RoleType roleType, String department) {
+    public void signup(String username, String password, String email, String student_number, RoleType roleType, String department) {
         // 중복 검사
         if(userRepository.findByUsername(username).isPresent()){throw new IllegalArgumentException("이미 존재하는 사용자입니다.");}
         if(userRepository.findByEmail(email).isPresent()) {throw new IllegalArgumentException("이미 등록된 이메일입니다.");}
@@ -90,18 +103,18 @@ public class LoginService {
 
 
         // 인증 여부 확인
-        if (!emailAuthCodeRepository.existsValidCodeVerified(email, LocalDateTime.now())) {
+        if (!emailAuthCodeRepository.existsByEmailAndVerifiedIsTrue(email)) {
             throw new IllegalStateException("이메일 인증이 완료되지 않았습니다.");
         }
 
         String hashedPassword = PasswordUtil.hashPassword(password);
-        User user = new User(username, hashedPassword, email, phone, roleType, department);
+        User user = new User(username, hashedPassword, email, student_number, roleType, department);
         userRepository.save(user);
     }
 
     //로그인
-    public Map<String, String> login(String username, String password) {
-        User user = userRepository.findByUsername(username)
+    public Map<String, String> login(String email, String password) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         String hashedPassword = PasswordUtil.hashPassword(password); // 비밀번호 해싱
@@ -142,7 +155,7 @@ public class LoginService {
     }
 
 
-    // 토큰 재발급
+    // 토큰 재발급 ( access token 유효 시간 만료 시 refresh token 을 이용해 재발급을 받음)
     public Map<String, String> reissue(String refreshToken) {
         Long userId = jwtUtil.validateRefreshToken(refreshToken);
 

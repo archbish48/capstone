@@ -4,7 +4,6 @@ import com.community.demo.dto.*;
 import com.community.demo.service.LoginService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,13 +35,13 @@ public class AuthController {
     // 회원가입
     @PostMapping("/signup")
     public void signup(@RequestBody @Valid SignupRequest request){
-        loginService.signup(request.getUsername(), request.getPassword(), request.getEmail(), request.getPhone(), request.getRole(), request.getDepartment());
+        loginService.signup(request.getUsername(), request.getPassword(), request.getEmail(), request.getStudent_number(), request.getRole(), request.getDepartment());
     }
 
     // 로그인
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody @Valid LoginRequest request){
-        return loginService.login(request.getUsername(), request.getPassword());
+        return loginService.login(request.getEmail(), request.getPassword());
     }
 
     // 비밀번호 재설정 요청
@@ -69,9 +68,8 @@ public class AuthController {
 
 
     @PostMapping("/reissue")
-    public Map<String, String> reissue(@RequestBody Map<String, String> request){
-        String refreshToken = request.get("refreshToken");
-        return loginService.reissue(refreshToken);
+    public Map<String, String> reissue(@RequestBody ReissueRequest request) {
+        return loginService.reissue(request.getRefreshToken());
     }
 
 
