@@ -56,7 +56,7 @@ public class AuthController {
     // 비밀번호 재설정 확인 api (이메일, 인증코드, 새로운 비밀번호를 입력하면 한번에 반영)
     @PostMapping("/password/reset/confirm")
     public ResponseEntity<String> requestPasswordReset(@RequestBody PasswordResetRequest request) {
-        loginService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
+        loginService.resetPassword(request.getEmail(), request.getNewPassword());
         return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
     }
 

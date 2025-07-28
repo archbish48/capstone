@@ -153,23 +153,24 @@ public class LoginService {
         refreshTokenStore.remove(userId);   //refresh Token 제거
 
     }
-    // 비밀번호 재설정
-    public void resetPassword(String rawEmail, String code, String newPassword) {
-        String normalizedEmail = rawEmail.toLowerCase().trim();
+    public void resetPassword(String rawEmail, String newPassword) {
+        String email = rawEmail.toLowerCase().trim();
 
-        // 1. 인증코드 검증
-        verifyEmailAuthCode(rawEmail, code);
+        // 1. 인증 여부 확인
+        if (!emailAuthCodeRepository.existsByEmailAndVerifiedIsTrue(email)) {
+            throw new IllegalStateException("이메일 인증이 완료되지 않았습니다.");
+        }
 
-        // 2. 사용자 존재 확인
-        User user = userRepository.findByEmail(normalizedEmail )
+        // 2. 사용자 확인
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // 3. 비밀번호 형식 확인
+        // 3. 비밀번호 검증
         if (!isValidPassword(newPassword)) {
             throw new IllegalArgumentException("비밀번호 형식이 올바르지 않습니다.");
         }
 
-        // 4. 비밀번호 변경
+        // 4. 변경
         user.setPassword(PasswordUtil.hashPassword(newPassword));
         userRepository.save(user);
     }
