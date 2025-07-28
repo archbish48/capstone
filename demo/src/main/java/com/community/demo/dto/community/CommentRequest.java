@@ -1,4 +1,4 @@
-package com.community.demo.dto;
+package com.community.demo.dto.community;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

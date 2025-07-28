@@ -1,6 +1,6 @@
-package com.community.demo.dto;
+package com.community.demo.dto.community;
 
-import com.community.demo.domain.ReactionType;
+import com.community.demo.domain.community.ReactionType;
 import lombok.Getter;
 import lombok.Setter;
 

@@ -1,5 +1,6 @@
-package com.community.demo.domain;
+package com.community.demo.domain.notice;
 
+import com.community.demo.domain.user.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

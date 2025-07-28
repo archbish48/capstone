@@ -1,6 +1,6 @@
 package com.community.demo.controller;
 
-import com.community.demo.dto.*;
+import com.community.demo.dto.auth.*;
 import com.community.demo.service.LoginService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -18,12 +18,14 @@ public class AuthController {
 
     private final LoginService loginService;
 
-    // 이메일 인증번호 요청
-    @PostMapping("/email/request")
-    public ResponseEntity<String> requestAuthCode(@RequestBody EmailRequest request) {
-        loginService.sendEmailAuthCode(request.getEmail());
-        return ResponseEntity.ok("이메일로 인증코드가 전송되었습니다.");
+
+    // 회원가입용 인증코드 요청
+    @PostMapping("/email/signup/request")
+    public ResponseEntity<String> requestSignupAuthCode(@RequestBody EmailRequest request) {
+        loginService.sendSignupAuthCode(request.getEmail());
+        return ResponseEntity.ok("인증코드가 전송되었습니다.");
     }
+
 
     // 이메일 인증번호 검증
     @PostMapping("/email/verify")
@@ -44,16 +46,16 @@ public class AuthController {
         return loginService.login(request.getEmail(), request.getPassword());
     }
 
-    // 비밀번호 재설정 요청
-    @PostMapping("/password/reset/request")
-    public ResponseEntity<String> requestPasswordReset(@RequestBody EmailRequest request) {
-        loginService.sendEmailAuthCode(request.getEmail());  // 인증코드 전송
-        return ResponseEntity.ok("비밀번호 재설정용 인증코드 전송 완료");
+    // 비밀번호 재설정용 인증코드 요청
+    @PostMapping("/email/password-reset/request")
+    public ResponseEntity<String> requestPasswordResetAuthCode(@RequestBody EmailRequest request) {
+        loginService.sendPasswordResetAuthCode(request.getEmail());
+        return ResponseEntity.ok("인증코드가 전송되었습니다.");
     }
 
-    // 비밀번호 재설정 확인
+    // 비밀번호 재설정 확인 api (이메일, 인증코드, 새로운 비밀번호를 입력하면 한번에 반영)
     @PostMapping("/password/reset/confirm")
-    public ResponseEntity<String> resetPassword(@RequestBody PasswordResetRequest request) {
+    public ResponseEntity<String> requestPasswordReset(@RequestBody PasswordResetRequest request) {
         loginService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
         return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
     }
@@ -67,6 +69,7 @@ public class AuthController {
     }
 
 
+    // 액세스 토큰 재발급
     @PostMapping("/reissue")
     public Map<String, String> reissue(@RequestBody ReissueRequest request) {
         return loginService.reissue(request.getRefreshToken());

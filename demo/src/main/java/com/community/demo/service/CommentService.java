@@ -1,7 +1,10 @@
 package com.community.demo.service;
 
-import com.community.demo.domain.*;
-import com.community.demo.dto.CommentResponse;
+import com.community.demo.domain.community.Comment;
+import com.community.demo.domain.community.Community;
+import com.community.demo.domain.user.RoleType;
+import com.community.demo.domain.user.User;
+import com.community.demo.dto.community.CommentResponse;
 import com.community.demo.repository.CommentRepository;
 import com.community.demo.repository.CommunityRepository;
 import lombok.RequiredArgsConstructor;

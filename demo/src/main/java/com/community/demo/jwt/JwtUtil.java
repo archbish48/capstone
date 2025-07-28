@@ -1,6 +1,6 @@
 package com.community.demo.jwt;
 
-import com.community.demo.domain.RoleType;
+import com.community.demo.domain.user.RoleType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;

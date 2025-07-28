@@ -1,11 +1,11 @@
 package com.community.demo.controller;
 
-import com.community.demo.dto.CommentRequest;
-import com.community.demo.dto.CommentResponse;
-import com.community.demo.dto.ReactionRequest;
-import com.community.demo.domain.User;
-import com.community.demo.dto.CommunityRequest;
-import com.community.demo.dto.CommunityResponse;
+import com.community.demo.dto.community.CommentRequest;
+import com.community.demo.dto.community.CommentResponse;
+import com.community.demo.dto.community.ReactionRequest;
+import com.community.demo.domain.user.User;
+import com.community.demo.dto.community.CommunityRequest;
+import com.community.demo.dto.community.CommunityResponse;
 import com.community.demo.service.CommentService;
 import com.community.demo.service.CommunityService;
 import com.community.demo.service.ReactionService;

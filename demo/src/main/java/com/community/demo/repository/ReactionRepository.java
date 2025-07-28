@@ -1,8 +1,8 @@
 package com.community.demo.repository;
 
-import com.community.demo.domain.Community;
-import com.community.demo.domain.Reaction;
-import com.community.demo.domain.User;
+import com.community.demo.domain.community.Community;
+import com.community.demo.domain.community.Reaction;
+import com.community.demo.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

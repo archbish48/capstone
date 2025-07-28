@@ -1,9 +1,9 @@
 package com.community.demo.service;
 
-import com.community.demo.domain.Community;
-import com.community.demo.domain.Reaction;
-import com.community.demo.domain.ReactionType;
-import com.community.demo.domain.User;
+import com.community.demo.domain.community.Community;
+import com.community.demo.domain.community.Reaction;
+import com.community.demo.domain.community.ReactionType;
+import com.community.demo.domain.user.User;
 import com.community.demo.repository.CommunityRepository;
 import com.community.demo.repository.ReactionRepository;
 import jakarta.transaction.Transactional;

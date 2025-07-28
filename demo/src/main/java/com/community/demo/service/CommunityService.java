@@ -1,10 +1,10 @@
 package com.community.demo.service;
 
-import com.community.demo.domain.RoleType;
-import com.community.demo.domain.User;
-import com.community.demo.dto.CommunityRequest;
-import com.community.demo.dto.CommunityResponse;
-import com.community.demo.domain.Community;
+import com.community.demo.domain.user.RoleType;
+import com.community.demo.domain.user.User;
+import com.community.demo.dto.community.CommunityRequest;
+import com.community.demo.dto.community.CommunityResponse;
+import com.community.demo.domain.community.Community;
 import com.community.demo.repository.CommunityRepository;
 import com.community.demo.repository.UserRepository;
 import jakarta.validation.Valid;

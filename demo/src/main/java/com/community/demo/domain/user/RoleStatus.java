@@ -1,4 +1,4 @@
-package com.community.demo.domain;
+package com.community.demo.domain.user;
 
 public enum RoleStatus {
     ACTIVE, PENDING // 관리자 승인 시 ACTIVE 로 변경

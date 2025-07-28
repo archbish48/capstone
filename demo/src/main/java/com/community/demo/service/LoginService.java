@@ -1,14 +1,13 @@
 package com.community.demo.service;
 
-import com.community.demo.domain.EmailAuthCode;
-import com.community.demo.domain.RoleStatus;
-import com.community.demo.domain.RoleType;
-import com.community.demo.domain.User;
+import com.community.demo.domain.auth.EmailAuthCode;
+import com.community.demo.domain.user.RoleStatus;
+import com.community.demo.domain.user.RoleType;
+import com.community.demo.domain.user.User;
 import com.community.demo.jwt.JwtUtil;
 import com.community.demo.repository.EmailAuthCodeRepository;
 import com.community.demo.repository.UserRepository;
 import com.community.demo.security.PasswordUtil;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,30 +53,41 @@ public class LoginService {
         return String.valueOf(code);
     }
 
-    // 이메일 인증번호 전송
-    public void sendEmailAuthCode(String email) {
-        //  1. 회원가입 중복 방지 (회원이 이미 존재하면 인증 불가)
-        if (userRepository.findByEmail(email).isPresent()) {
+    // 회원가입용 이메일 인증 요청
+    public void sendSignupAuthCode(String rawEmail) {       // string email 재개입된 변수 방지를 위해 변수 변경
+        String normalizedEmail = rawEmail.toLowerCase().trim();         // trim 함수로 양쪽 공백 제거
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
+        sendOrUpdateCode(normalizedEmail);
+    }
 
-        //  2. 랜덤 코드 생성
+    // 비밀번호 재설정용 이메일 인증 요청
+    public void sendPasswordResetAuthCode(String rawEmail) {
+        String normalizedEmail = rawEmail.toLowerCase().trim();         // trim 함수로 양쪽 공백 제거
+        if (userRepository.findByEmail(normalizedEmail).isEmpty()) {
+            throw new IllegalArgumentException("가입되지 않은 이메일입니다.");
+        }
+        sendOrUpdateCode(normalizedEmail);
+    }
+
+    // 인증코드 전송 로직 (공통)
+    private void sendOrUpdateCode(String email) {
         String code = generate6DigitCode();
-
-        // 3. 기존 인증 기록이 있으면 재사용하며 값만 덮어씀
         Optional<EmailAuthCode> existing = emailAuthCodeRepository.findTopByEmailOrderByIdDesc(email);
+
         if (existing.isPresent()) {
             EmailAuthCode auth = existing.get();
-            auth.resetVerification(code);  // verified = false, code 갱신
+            auth.resetVerification(code);
             emailAuthCodeRepository.save(auth);
         } else {
-            EmailAuthCode newAuth = new EmailAuthCode(email, code);
-            emailAuthCodeRepository.save(newAuth);
+            emailAuthCodeRepository.save(new EmailAuthCode(email, code));
         }
 
-        //  4. 이메일 전송
         emailService.sendAuthCode(email, code);
     }
+
+
 
 
     //이메일 인증번호 검증(회원가입, 비밀번호 찾기 시 사용)
@@ -144,15 +154,26 @@ public class LoginService {
 
     }
     // 비밀번호 재설정
-    public void resetPassword(String email, String code, String newPassword) {
-        verifyEmailAuthCode(email, code);
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
+    public void resetPassword(String rawEmail, String code, String newPassword) {
+        String normalizedEmail = rawEmail.toLowerCase().trim();
 
-        if(!isValidPassword(newPassword)){
-            throw new IllegalArgumentException("비밀번호 형식이 올바르지 않습니다!");
+        // 1. 인증코드 검증
+        verifyEmailAuthCode(rawEmail, code);
+
+        // 2. 사용자 존재 확인
+        User user = userRepository.findByEmail(normalizedEmail )
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 3. 비밀번호 형식 확인
+        if (!isValidPassword(newPassword)) {
+            throw new IllegalArgumentException("비밀번호 형식이 올바르지 않습니다.");
         }
+
+        // 4. 비밀번호 변경
+        user.setPassword(PasswordUtil.hashPassword(newPassword));
+        userRepository.save(user);
     }
+
 
 
     // 토큰 재발급 ( access token 유효 시간 만료 시 refresh token 을 이용해 재발급을 받음)

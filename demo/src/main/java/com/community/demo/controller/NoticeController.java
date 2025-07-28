@@ -1,9 +1,9 @@
 package com.community.demo.controller;
 
 
-import com.community.demo.domain.User;
-import com.community.demo.dto.NoticeRequest;
-import com.community.demo.dto.NoticeResponse;
+import com.community.demo.domain.user.User;
+import com.community.demo.dto.notice.NoticeRequest;
+import com.community.demo.dto.notice.NoticeResponse;
 import com.community.demo.service.NoticeService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;

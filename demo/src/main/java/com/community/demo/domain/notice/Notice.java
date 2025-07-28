@@ -1,5 +1,6 @@
-package com.community.demo.domain;
+package com.community.demo.domain.notice;
 
+import com.community.demo.domain.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,6 +36,12 @@ public class Notice {       //공지사항 테이블
 
     @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)    // notices 와 notifications (알림저장용 테이블)은 참조 관계라 CASCADE 적용을 위해 코드 추가
     private List<Notification> notifications = new ArrayList<>();
+
+    @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<NoticeImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Attachment> attachments = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

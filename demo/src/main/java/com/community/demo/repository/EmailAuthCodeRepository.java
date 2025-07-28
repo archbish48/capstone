@@ -1,11 +1,8 @@
 package com.community.demo.repository;
 
-import com.community.demo.domain.EmailAuthCode;
+import com.community.demo.domain.auth.EmailAuthCode;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface EmailAuthCodeRepository extends JpaRepository<EmailAuthCode, Long> {

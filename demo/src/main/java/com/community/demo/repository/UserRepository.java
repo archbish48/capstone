@@ -1,7 +1,7 @@
 package com.community.demo.repository;
 
-import com.community.demo.domain.RoleType;
-import com.community.demo.domain.User;
+import com.community.demo.domain.user.RoleType;
+import com.community.demo.domain.user.User;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.jpa.repository.JpaRepository;
 

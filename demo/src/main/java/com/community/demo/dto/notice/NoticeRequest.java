@@ -1,4 +1,4 @@
-package com.community.demo.dto;
+package com.community.demo.dto.notice;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

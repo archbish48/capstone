@@ -1,6 +1,6 @@
-package com.community.demo.dto;
+package com.community.demo.dto.auth;
 
-import com.community.demo.domain.RoleType;
+import com.community.demo.domain.user.RoleType;
 import lombok.Data;
 import jakarta.validation.constraints.*;
 
