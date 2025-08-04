@@ -1,4 +1,4 @@
-package com.community.demo.service;
+package com.community.demo.service.community;
 
 import com.community.demo.domain.user.RoleType;
 import com.community.demo.domain.user.User;

@@ -1,7 +1,7 @@
 package com.community.demo.controller;
 
 import com.community.demo.dto.auth.*;
-import com.community.demo.service.LoginService;
+import com.community.demo.service.auth.LoginService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

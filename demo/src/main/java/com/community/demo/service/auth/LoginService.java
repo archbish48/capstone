@@ -1,4 +1,4 @@
-package com.community.demo.service;
+package com.community.demo.service.auth;
 
 import com.community.demo.domain.auth.EmailAuthCode;
 import com.community.demo.domain.user.RoleStatus;

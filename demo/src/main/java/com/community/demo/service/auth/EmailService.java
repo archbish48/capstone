@@ -1,4 +1,4 @@
-package com.community.demo.service;
+package com.community.demo.service.auth;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

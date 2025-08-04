@@ -43,9 +43,19 @@ public class Notice {       //공지사항 테이블
     @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Attachment> attachments = new ArrayList<>();
 
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @PrePersist  void onCreate() { createdAt = LocalDateTime.now(); }
     @PreUpdate   void onUpdate() { updatedAt = LocalDateTime.now(); }
+    public void removeAttachment(Attachment attachment) {
+        attachments.remove(attachment);
+        attachment.setNotice(null);
+    }
+
+    public void removeImage(NoticeImage image) {
+        images.remove(image);
+        image.setNotice(null);
+    }
 }

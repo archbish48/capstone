@@ -53,4 +53,5 @@ public class User {     //유저 정보 테이블
         // STUDENT 는 ACTIVE, 그 외는 PENDING
         this.roleStatus = (roleType == RoleType.STUDENT) ? RoleStatus.ACTIVE : RoleStatus.PENDING;
     }
+
 }

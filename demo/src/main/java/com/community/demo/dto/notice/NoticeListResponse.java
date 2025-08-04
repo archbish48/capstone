@@ -10,6 +10,11 @@ import lombok.Data;
 
 public class NoticeListResponse {   //createdAt을 제거하고 updatedAt만 넘기도록 수정
     private Long id;
+    private String title;
+    private String text;
+    private String authorName;
+    private String authorRole;
     private LocalDateTime updatedAt;
     private String thumbnailUrl;
+    private boolean bookmarked;
 }

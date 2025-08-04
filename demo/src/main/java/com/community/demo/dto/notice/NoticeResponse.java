@@ -14,6 +14,7 @@ public class NoticeResponse {
     private String text;
     private String department;
     private LocalDateTime updatedAt;
-    private List<String> imageUrls;
-    private List<String> attachmentUrls;
+    private List<String> imageUrls;     //이미지 url
+    private List<String> attachmentUrls;    // 첨부파일
+    private boolean isBookmarked; //  북마크 정보 추가
 }
