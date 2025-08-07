@@ -43,17 +43,17 @@ public class NoticeController {
     // 공지사항 목록 불러오기 (페이징, 썸네일 포함)
     @GetMapping
     public Page<NoticeListResponse> getNotices(
-            @RequestParam String department,
+            @RequestParam(required = false) List<String> departments,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        //  자동 자신이 속한 학과의 공지사항 구독 처리
         bookmarkService.autoSubscribeToDepartmentManager(me);
 
-        return noticeService.getNoticesForDepartment(department, pageable, me);
+        return noticeService.getFilteredNotices(departments, keyword, pageable, me);
     }
 
     // id로 notice 를 조회해 첨부 이미지 목록, 첨부파일 목록 추출, 작성자가 북마크 대상인지 확인 (공지사항 상세 보기 전용 로직)

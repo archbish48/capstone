@@ -6,9 +6,9 @@ import com.community.demo.domain.community.ReactionType;
 import com.community.demo.domain.user.User;
 import com.community.demo.repository.CommunityRepository;
 import com.community.demo.repository.ReactionRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;

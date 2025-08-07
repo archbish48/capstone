@@ -50,20 +50,38 @@ public class NoticeService {
 
     //  목록 조회 - 페이징, 최신순, 썸네일 이미지 포함 (공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부)
     @Transactional(readOnly = true)
-    public Page<NoticeListResponse> getNoticesForDepartment(String department, Pageable pageable, User user) {
+    public Page<NoticeListResponse> getFilteredNotices(List<String> departments, String keyword, Pageable pageable, User user) {
         Set<Long> bookmarkedAuthors = bookmarkService.getBookmarkedAuthorIds(user);
 
-        return noticeRepository.findByDepartmentOrderByUpdatedAtDesc(department, pageable)
-                .map(notice -> new NoticeListResponse(
-                        notice.getId(),
-                        notice.getTitle(),
-                        notice.getText(),
-                        notice.getAuthor().getUsername(),
-                        notice.getAuthor().getRoleType().name(),
-                        notice.getUpdatedAt(),
-                        notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),  // 이미지가 존재한다면 0번째 이미지만 넘김(썸네일 이미지용)
-                        bookmarkedAuthors.contains(notice.getAuthor().getId())
-                ));
+        Page<Notice> notices;
+
+        boolean hasDepartments = departments != null && !departments.isEmpty();
+        boolean hasKeyword = keyword != null && !keyword.isBlank();
+
+        if (hasDepartments && hasKeyword) {
+            // 학과 + 검색어
+            notices = noticeRepository.findByDepartmentsAndKeyword(departments, keyword, pageable);
+        } else if (hasDepartments) {
+            // 학과만
+            notices = noticeRepository.findByDepartmentIn(departments, pageable);
+        } else if (hasKeyword) {
+            // 검색어만
+            notices = noticeRepository.findByKeyword(keyword, pageable);
+        } else {
+            // 아무 필터 없음
+            notices = noticeRepository.findAll(pageable);
+        }
+
+        return notices.map(notice -> new NoticeListResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getText(),
+                notice.getAuthor().getUsername(),
+                notice.getAuthor().getRoleType().name(),
+                notice.getUpdatedAt(),
+                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
+                bookmarkedAuthors.contains(notice.getAuthor().getId())
+        ));
     }
 
     //  상세 조회 - 공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부

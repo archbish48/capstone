@@ -20,4 +20,22 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     List<Notice> findByAuthorIdOrderByUpdatedAtDesc(Long authorId);
 
+
+    // 제목 또는 내용에 keyword 포함 여부 확인
+    @Query("SELECT n FROM Notice n WHERE " +
+            "(:departments IS NULL OR n.department IN :departments) AND " +
+            "(:keyword IS NULL OR n.title LIKE %:keyword% OR n.text LIKE %:keyword%)")
+    Page<Notice> findByDepartmentsAndKeyword(
+            @Param("departments") List<String> departments,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    // 학과만
+    Page<Notice> findByDepartmentIn(List<String> departments, Pageable pageable);
+
+    // 검색어만
+    @Query("SELECT n FROM Notice n WHERE n.title LIKE %:keyword% OR n.text LIKE %:keyword%")
+    Page<Notice> findByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
 }
