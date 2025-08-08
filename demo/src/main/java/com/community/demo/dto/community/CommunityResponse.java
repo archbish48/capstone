@@ -17,6 +17,7 @@ public class CommunityResponse {
 
     private String authorName;
     private String authorDepartment;
+    private String authorRole;      //작성자의 권한
 
     private LocalDateTime updatedAt;
 
@@ -28,4 +29,6 @@ public class CommunityResponse {
     private int commentCount;
 
     private boolean bookmarked;
+
+    private String myReaction;  // 내 reaction 상태를 알려주는 필드
 }

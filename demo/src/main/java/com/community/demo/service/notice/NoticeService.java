@@ -76,8 +76,10 @@ public class NoticeService {
                 notice.getId(),
                 notice.getTitle(),
                 notice.getText(),
+                notice.getAuthor().getId(),
                 notice.getAuthor().getUsername(),
                 notice.getAuthor().getRoleType().name(),
+                notice.getCreatedAt(),
                 notice.getUpdatedAt(),
                 notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
                 bookmarkedAuthors.contains(notice.getAuthor().getId())
@@ -105,6 +107,7 @@ public class NoticeService {
                 notice.getTitle(),
                 notice.getText(),
                 notice.getDepartment(),
+                notice.getCreatedAt(),
                 notice.getUpdatedAt(),
                 imageUrls,
                 attachmentUrls,
@@ -114,24 +117,34 @@ public class NoticeService {
 
     // 내가 북마크한 작성자들의 공지사항을 최신순으로 6개씩 페이징해서 조회
     @Transactional(readOnly = true)
-    public Page<NoticeListResponse> getNoticesFromBookmarkedAuthors(User user, Pageable pageable) {
+    public Page<NoticeListResponse> getNoticesFromBookmarkedAuthors(
+            User user, List<String> departments, String keyword, Pageable pageable) {
+
         Set<Long> bookmarkedAuthorIds = bookmarkService.getBookmarkedAuthorIds(user);
 
         if (bookmarkedAuthorIds.isEmpty()) {
-            return Page.empty();
+            return Page.empty(pageable); // 페이지 메타 보존
         }
 
-        return noticeRepository.findByAuthorIds(bookmarkedAuthorIds, pageable)
-                .map(notice -> new NoticeListResponse(
-                        notice.getId(),
-                        notice.getTitle(),
-                        notice.getText(),
-                        notice.getAuthor().getUsername(),
-                        notice.getAuthor().getRoleType().name(),
-                        notice.getUpdatedAt(),
-                        notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-                        true // 북마크한 작성자 글이므로 무조건 true
-                ));
+        // 빈 리스트 -> null 로 변환 (JPQL optional 조건 처리)
+        List<String> deptParam = (departments == null || departments.isEmpty()) ? null : departments;
+        String kw = (keyword != null && !keyword.isBlank()) ? keyword : null;
+
+        Page<Notice> page = noticeRepository.findByBookmarkedAuthorsWithFilters(
+                bookmarkedAuthorIds, deptParam, kw, pageable);
+
+        return page.map(notice -> new NoticeListResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getText(),
+                notice.getAuthor().getId(),
+                notice.getAuthor().getUsername(),
+                notice.getAuthor().getRoleType().name(),
+                notice.getCreatedAt(),
+                notice.getUpdatedAt(),
+                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
+                true // 북마크 탭이므로 항상 true
+        ));
     }
 
 
@@ -146,8 +159,10 @@ public class NoticeService {
                 notice.getId(),
                 notice.getTitle(),
                 notice.getText(),
+                notice.getAuthor().getId(),
                 notice.getAuthor().getUsername(),
                 notice.getAuthor().getRoleType().name(),
+                notice.getCreatedAt(),
                 notice.getUpdatedAt(),
                 notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
                 bookmarkedAuthors.contains(notice.getAuthor().getId())
@@ -156,22 +171,21 @@ public class NoticeService {
 
     // 내가 작성한 공지사항 전체 리스트 조회 API ( 페이지 없이 전체 공지사항을 리스트로 반환)
     @Transactional(readOnly = true)
-    public List<NoticeListResponse> getMyNotices(User user) {
-        List<Notice> notices = noticeRepository.findByAuthorIdOrderByUpdatedAtDesc(user.getId());
+    public Page<NoticeListResponse> getMyNotices(String keyword, Pageable pageable, User user) {
+        Page<Notice> page = noticeRepository.findMyNotices(user.getId(), keyword, pageable);
 
-        // 내가 쓴 글 → isBookmarked = false 고정
-        return notices.stream()
-                .map(notice -> new NoticeListResponse(
-                        notice.getId(),
-                        notice.getTitle(),
-                        notice.getText(),
-                        notice.getAuthor().getUsername(),
-                        notice.getAuthor().getRoleType().name(),
-                        notice.getUpdatedAt(),
-                        notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-                        false // 내가 쓴 글이므로 북마크는 false
-                ))
-                .toList();
+        return page.map(notice -> new NoticeListResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getText(),
+                notice.getAuthor().getId(),
+                notice.getAuthor().getUsername(),
+                notice.getAuthor().getRoleType().name(),
+                notice.getCreatedAt(),
+                notice.getUpdatedAt(),
+                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
+                false // 내가 쓴 글이므로 북마크는 항상 false
+        ));
     }
 
     // 내가 작성한 공지사항 전체 리스트 조회 API (6개씩 페이징 할 경우 이 코드 사용)
@@ -337,7 +351,7 @@ public class NoticeService {
                 .toList();
         
         return new NoticeResponse(notice.getId(), notice.getTitle(), notice.getText(),
-                notice.getDepartment(), notice.getUpdatedAt(), imageUrls, attachmentUrls, false);
+                notice.getDepartment(), notice.getCreatedAt(), notice.getUpdatedAt(), imageUrls, attachmentUrls, false);
     }
 
 

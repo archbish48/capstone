@@ -116,15 +116,20 @@ public class NoticeController {
     }
 
     // 구독 목록에서 내가 북마크한 작성자들의 공지사항을 최신순으로 6개씩 페이징해서 조회하는 API
-    @GetMapping("/subscriptions")
+    @GetMapping("/subscribed")
     public Page<NoticeListResponse> getSubscribedNotices(
+            @RequestParam(required = false) List<String> departments,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "6") int size) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
+            @RequestParam(defaultValue = "6") int size
+    ) {
+        Pageable pageable = PageRequest.of(
+                page, size,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt"))
+        );
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        return noticeService.getNoticesFromBookmarkedAuthors(me, pageable);
+        return noticeService.getNoticesFromBookmarkedAuthors(me, departments, keyword, pageable);
     }
 
     // 특정 작성자의 공지사항을 최신순으로 6개씩 조회하는 API ( 작성자 클릭 시 해당 작성자의 공지 모아보기)
@@ -140,11 +145,20 @@ public class NoticeController {
         return noticeService.getNoticesByAuthor(authorId, me, pageable);
     }
 
-    // 내가 작성한 공지사항 전부 반환 ( 페이징 없이)
+    // 내가 작성한 공지사항 전부 반환
     @GetMapping("/me")
-    public List<NoticeListResponse> getMyNotices() {
+    public Page<NoticeListResponse> getMyNotices(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size
+    ) {
+        Pageable pageable = PageRequest.of(
+                page, size,
+                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt"))
+        );
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return noticeService.getMyNotices(me);
+
+        return noticeService.getMyNotices(keyword, pageable, me);
     }
 
     // 내가 작성한 공지사항 전부 반환(페이징 할 경우)

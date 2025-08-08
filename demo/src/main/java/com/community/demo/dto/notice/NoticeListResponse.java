@@ -12,8 +12,11 @@ public class NoticeListResponse {   //createdAt을 제거하고 updatedAt만 넘
     private Long id;
     private String title;
     private String text;
+
+    private Long authorId;
     private String authorName;
     private String authorRole;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String thumbnailUrl;
     private boolean bookmarked;

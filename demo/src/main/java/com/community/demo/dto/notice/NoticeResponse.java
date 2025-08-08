@@ -13,6 +13,7 @@ public class NoticeResponse {
     private String title;
     private String text;
     private String department;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<String> imageUrls;     //이미지 url
     private List<String> attachmentUrls;    // 첨부파일

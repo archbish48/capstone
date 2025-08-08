@@ -2,6 +2,7 @@ package com.community.demo.service.community;
 
 import com.community.demo.domain.community.CommunityBookmark;
 import com.community.demo.domain.community.CommunityImage;
+import com.community.demo.domain.community.Reaction;
 import com.community.demo.domain.user.RoleType;
 import com.community.demo.domain.user.User;
 import com.community.demo.dto.community.CommunityResponse;
@@ -32,7 +33,7 @@ public class CommunityService {
     private final CommunityImageRepository imageRepository;
     private final CommunityBookmarkRepository bookmarkRepository;
     private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
+    private final ReactionRepository reactionRepository;
 
     @Value("${file.dir}")
     private String fileDir;
@@ -115,11 +116,27 @@ public class CommunityService {
     }
 
     // 전체 조회 (페이징)
+//    public Page<CommunityResponse> getAllPosts(int page, User me) {
+//        PageRequest pageable = PageRequest.of(page, 6, Sort.by(Sort.Direction.DESC, "updatedAt"));
+//        Page<Community> result = communityRepository.findAll(pageable);
+//
+//        return result.map(post -> toResponse(post, me));
+//    }
+
     public Page<CommunityResponse> getAllPosts(int page, User me) {
         PageRequest pageable = PageRequest.of(page, 6, Sort.by(Sort.Direction.DESC, "updatedAt"));
         Page<Community> result = communityRepository.findAll(pageable);
 
-        return result.map(post -> toResponse(post, me));
+        return result.map(post -> {
+            CommunityResponse response = toResponse(post, me);
+
+            Reaction reaction = reactionRepository.findByPostAndUser(post, me).orElse(null);
+            if (reaction != null) {
+                response.setMyReaction(reaction.getType().name());
+            }
+
+            return response;
+        });
     }
 
     // 단일 글 조회
@@ -141,7 +158,7 @@ public class CommunityService {
     public List<CommunityResponse> getMyPosts(User me) {
         List<Community> posts = communityRepository.findByAuthor(me);
         return posts.stream()
-                .map(post -> toResponse(post, me))
+                .map(post -> toResponse(post, me, null))
                 .collect(Collectors.toList());
     }
 
@@ -151,8 +168,14 @@ public class CommunityService {
         return post.getAuthor().getId().equals(user.getId()) || user.getRoleType() == RoleType.ADMIN;
     }
 
-    // 응답 변환
+
+    // 기본 버전 - myReaction 없음
     private CommunityResponse toResponse(Community post, User me) {
+        return toResponse(post, me, null);
+    }
+
+    // 응답 변환
+    private CommunityResponse toResponse(Community post, User me, String myReaction) {
         List<String> imageUrls = post.getImages().stream()
                 .map(CommunityImage::getImageUrl)
                 .toList();
@@ -166,13 +189,16 @@ public class CommunityService {
                 post.getText(),
                 post.getAuthor().getUsername(),
                 post.getAuthor().getDepartment(),
+                post.getAuthor().getRoleType().name(),
                 post.getUpdatedAt(),
                 imageUrls,
                 new ArrayList<>(post.getTags()),
                 post.getLikeCount(),
                 post.getDislikeCount(),
                 commentCount,
-                isBookmarked
+                isBookmarked,
+                myReaction
         );
     }
+
 }

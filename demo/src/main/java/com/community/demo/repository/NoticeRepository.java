@@ -38,4 +38,48 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
     @Query("SELECT n FROM Notice n WHERE n.title LIKE %:keyword% OR n.text LIKE %:keyword%")
     Page<Notice> findByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
+
+    @Query(
+            value = """
+            select n from Notice n
+            where n.author.id = :authorId
+              and ( :keyword is null or :keyword = '' 
+                    or lower(n.title) like lower(concat('%', :keyword, '%'))
+                    or lower(n.text)  like lower(concat('%', :keyword, '%')) )
+            """,
+            countQuery = """
+            select count(n) from Notice n
+            where n.author.id = :authorId
+              and ( :keyword is null or :keyword = '' 
+                    or lower(n.title) like lower(concat('%', :keyword, '%'))
+                    or lower(n.text)  like lower(concat('%', :keyword, '%')) )
+            """
+    )
+    Page<Notice> findMyNotices(@Param("authorId") Long authorId,
+                               @Param("keyword") String keyword,
+                               Pageable pageable);
+
+    @Query(
+            value = """
+            select n from Notice n
+            where n.author.id in :authorIds
+              and ( :departments is null or n.department in :departments )
+              and ( :keyword is null or :keyword = '' 
+                    or lower(n.title) like lower(concat('%', :keyword, '%'))
+                    or lower(n.text)  like lower(concat('%', :keyword, '%')) )
+            """,
+            countQuery = """
+            select count(n) from Notice n
+            where n.author.id in :authorIds
+              and ( :departments is null or n.department in :departments )
+              and ( :keyword is null or :keyword = '' 
+                    or lower(n.title) like lower(concat('%', :keyword, '%'))
+                    or lower(n.text)  like lower(concat('%', :keyword, '%')) )
+            """
+    )
+    Page<Notice> findByBookmarkedAuthorsWithFilters(@Param("authorIds") Set<Long> authorIds,
+                                                    @Param("departments") List<String> departments,
+                                                    @Param("keyword") String keyword,
+                                                    Pageable pageable);
+
 }
