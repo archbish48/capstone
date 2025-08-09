@@ -2,16 +2,14 @@ package com.community.demo.service.notice;
 
 import com.community.demo.domain.notice.Bookmark;
 import com.community.demo.domain.user.User;
-import com.community.demo.dto.bookmark.BookmarkedAuthorDto;
+import com.community.demo.dto.bookmark.BookmarkAuthorResponse;
 import com.community.demo.repository.BookmarkRepository;
 import com.community.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +50,7 @@ public class BookmarkService {
         return bookmarkRepository.existsByUserAndAuthor(me, author);
     }
 
+
     //  현재 사용자가 북마크한 모든 작성자 ID 목록
     public Set<Long> getBookmarkedAuthorIds(User me) {
         return bookmarkRepository.findAllByUser(me).stream()
@@ -60,14 +59,23 @@ public class BookmarkService {
     }
 
 
+
     // 현재 사용자가 북마크한 모든 작성자의 ID, 이름 목록 리스트 반환
-    public List<BookmarkedAuthorDto> getBookmarkedAuthors(User me) {
-        return bookmarkRepository.findAllByUser(me).stream()
-                .map(bookmark -> new BookmarkedAuthorDto(
-                        bookmark.getAuthor().getId(),
-                        bookmark.getAuthor().getUsername()
-                ))
-                .toList();
+    @Transactional(readOnly = true)
+    public List<BookmarkAuthorResponse> getBookmarkedAuthors(User me) {
+        // fetch join 또는 @EntityGraph 적용된 메서드 사용
+        List<Bookmark> bookmarks = bookmarkRepository.findAllByUser(me);
+
+        // 혹시 모를 중복 방지
+        Map<Long, BookmarkAuthorResponse> map = new LinkedHashMap<>();
+        for (Bookmark b : bookmarks) {
+            var a = b.getAuthor();
+            map.putIfAbsent(
+                    a.getId(),
+                    new BookmarkAuthorResponse(a.getId(), a.getUsername(), a.getRoleType(), true)
+            );
+        }
+        return new ArrayList<>(map.values());
     }
 
 

@@ -1,7 +1,7 @@
 package com.community.demo.controller;
 
 import com.community.demo.domain.user.User;
-import com.community.demo.dto.bookmark.BookmarkedAuthorDto;
+import com.community.demo.dto.bookmark.BookmarkAuthorResponse;
 import com.community.demo.service.notice.BookmarkService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class BookmarkController {
         return ResponseEntity.noContent().build();
     }
 
-    //  내가 북마크한 모든 작성자 ID 리스트
+    //  내가 북마크한 모든 작성자 ID 리스트, 이름, 권한, 북마크 여부 반환
     @GetMapping
     public ResponseEntity<Set<Long>> getBookmarkedAuthorIds() {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -45,11 +45,10 @@ public class BookmarkController {
         return ResponseEntity.ok(authorIds);
     }
 
-    // 내가 북마크한 모든 작성자의 ID, 이름 리스트 리턴
-    @GetMapping("authors")
-    public ResponseEntity<List<BookmarkedAuthorDto>> getBookmarkedAuthors() {
+    // 내가 북마크한 모든 작성자의 ID, 이름, 권한, 북마크 여부 리턴
+    @GetMapping("/authors")
+    public List<BookmarkAuthorResponse> getBookmarkedAuthors() {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        List<BookmarkedAuthorDto> authors = bookmarkService.getBookmarkedAuthors(me);
-        return ResponseEntity.ok(authors);
+        return bookmarkService.getBookmarkedAuthors(me);
     }
 }

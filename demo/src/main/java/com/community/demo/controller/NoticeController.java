@@ -161,16 +161,6 @@ public class NoticeController {
         return noticeService.getMyNotices(keyword, pageable, me);
     }
 
-    // 내가 작성한 공지사항 전부 반환(페이징 할 경우)
-//    @GetMapping("/me")
-//    public Page<NoticeListResponse> getMyNotices(
-//            @RequestParam(defaultValue = "0") int page,
-//            @RequestParam(defaultValue = "6") int size) {
-//
-//        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
-//        return noticeService.getMyNotices(me, pageable);
-//    }
 
 
     // 첨부파일 다운로드 API ( GET /notices/download?filename=종합정보시간표.pdf) 등으로 다운로드 요청

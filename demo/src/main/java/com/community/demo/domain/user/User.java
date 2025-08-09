@@ -37,7 +37,7 @@ public class User {     //유저 정보 테이블
     private RoleStatus roleStatus = RoleStatus.ACTIVE; // STUDENT 는 즉시 활성
 
 
-    private String profileImageUrl; // 프로필 이미지 변수(null 이면 default 이미지 또는 프사 없음으로 간주)
+    //private String profileImageUrl; // 프로필 이미지 변수(null 이면 default 이미지 또는 프사 없음으로 간주)
 
 
 

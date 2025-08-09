@@ -14,11 +14,9 @@ public class MyProfileResponse {
     private final String department;
     private final RoleType roleType;
     private final RoleStatus roleStatus;
-    private final String profileImageUrl;
 
     private MyProfileResponse(Long id, String username, String email, String student_number,
-                              String department, RoleType roleType, RoleStatus roleStatus,
-                              String profileImageUrl) {
+                              String department, RoleType roleType, RoleStatus roleStatus) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -26,7 +24,6 @@ public class MyProfileResponse {
         this.department = department;
         this.roleType = roleType;
         this.roleStatus = roleStatus;
-        this.profileImageUrl = profileImageUrl;
     }
 
     public static MyProfileResponse from(User u) {
@@ -37,8 +34,7 @@ public class MyProfileResponse {
                 u.getStudent_number(),
                 u.getDepartment(),
                 u.getRoleType(),
-                u.getRoleStatus(),
-                u.getProfileImageUrl()
+                u.getRoleStatus()
         );
     }
 }
