@@ -106,6 +106,7 @@ public class NoticeService {
                 notice.getId(),
                 notice.getTitle(),
                 notice.getText(),
+                notice.getAuthor().getId(),
                 notice.getDepartment(),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt(),
@@ -350,7 +351,7 @@ public class NoticeService {
                 .map(Attachment::getFileUrl)
                 .toList();
         
-        return new NoticeResponse(notice.getId(), notice.getTitle(), notice.getText(),
+        return new NoticeResponse(notice.getId(), notice.getTitle(), notice.getText(),notice.getAuthor().getId(),
                 notice.getDepartment(), notice.getCreatedAt(), notice.getUpdatedAt(), imageUrls, attachmentUrls, false);
     }
 

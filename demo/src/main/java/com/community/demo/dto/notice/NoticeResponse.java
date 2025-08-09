@@ -12,6 +12,8 @@ public class NoticeResponse {
     private Long id;
     private String title;
     private String text;
+
+    private Long authorId;
     private String department;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
