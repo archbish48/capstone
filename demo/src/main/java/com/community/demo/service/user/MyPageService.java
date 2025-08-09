@@ -21,6 +21,7 @@ public class MyPageService {
         return MyProfileResponse.from(user);
     }
 
+    // 유저의 이름, role, 학번,
     public MyBriefProfileResponse getMyBrief(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
