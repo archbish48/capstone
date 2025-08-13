@@ -49,6 +49,33 @@ public class CommentService {
 
         return new CommentResponse(c.getId(), c.getContent(), me.getDepartment(), c.getCreatedAt());
     }
+    // 댓글 수정
+    @Transactional
+    public CommentResponse update(Long commentId, User me, String newContent) {
+        if (newContent == null || newContent.isBlank()) {
+            throw new IllegalArgumentException("댓글 내용이 비어 있습니다.");
+        }
+
+        Comment c = commentRepo.findById(commentId)
+                .orElseThrow(() -> new NoSuchElementException("comment"));
+
+        boolean owner = c.getAuthor().getId().equals(me.getId());
+        boolean admin = me.getRoleType() == RoleType.ADMIN;
+        if (!(owner || admin)) {
+            throw new AccessDeniedException("수정 권한 없음");
+        }
+
+        c.setContent(newContent.trim());
+        // 필요 시: c.setUpdatedAt(LocalDateTime.now());  // 엔티티에 필드/콜백이 있으면 자동 처리됨
+        commentRepo.save(c); // 명시 저장 (JPA dirty checking만으로도 되지만 안전하게)
+
+        return new CommentResponse(
+                c.getId(),
+                c.getContent(),
+                c.getAuthor().getDepartment(),
+                c.getCreatedAt()
+        );
+    }
 
     // 삭제 – 소유자 or ADMIN
     @Transactional

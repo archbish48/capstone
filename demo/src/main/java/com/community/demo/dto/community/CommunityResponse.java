@@ -19,6 +19,8 @@ public class CommunityResponse {
     private String authorDepartment;
     private String authorRole;      //작성자의 권한
 
+    // createdAt 도 넘겨주기
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     private List<String> imageUrls;

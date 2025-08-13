@@ -86,23 +86,38 @@ public class CommunityController {
 
     // 전체 게시글 목록 (페이징)
     @GetMapping
-    public ResponseEntity<Page<CommunityResponse>> getAll(@RequestParam(defaultValue = "0") int page) {
+    public ResponseEntity<Page<CommunityResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
+            @RequestParam(required = false) String keyword,                     // 제목/내용/태그 공통 검색
+            @RequestParam(defaultValue = "latest") String sort                  // latest | popular
+    ) {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return ResponseEntity.ok(communityService.getAllPosts(page, me));
+        return ResponseEntity.ok(communityService.getAllPosts(page, size, keyword, sort, me));
     }
 
-    // 북마크한 게시글 목록
+    // 북마크한 게시글 목록 (검색+정렬+페이징)
     @GetMapping("/bookmarked")
-    public ResponseEntity<List<CommunityResponse>> getBookmarkedPosts() {
+    public ResponseEntity<Page<CommunityResponse>> getBookmarkedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "latest") String sort
+    ) {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return ResponseEntity.ok(communityService.getBookmarkedPosts(me));
+        return ResponseEntity.ok(communityService.getBookmarkedPosts(page, size, keyword, sort, me));
     }
 
-    // 내가 작성한 게시글 목록
+    // 내가 작성한 게시글 목록 (검색+정렬+페이징)
     @GetMapping("/mine")
-    public ResponseEntity<List<CommunityResponse>> getMyPosts() {
+    public ResponseEntity<Page<CommunityResponse>> getMyPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "latest") String sort  // latest | popular
+    ) {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return ResponseEntity.ok(communityService.getMyPosts(me));
+        return ResponseEntity.ok(communityService.getMyPosts(page, size, keyword, sort, me));
     }
 
     // 반응 (좋아요 / 싫어요)
@@ -125,6 +140,15 @@ public class CommunityController {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         CommentResponse res = commentService.create(postId, me, request.getContent());
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
+    }
+
+    // 댓글 수정
+    @PatchMapping("/comments/{id}")
+    public ResponseEntity<CommentResponse> updateComment(@PathVariable("id") Long commentId, @RequestBody @Valid CommentRequest request) {
+
+        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        CommentResponse updated = commentService.update(commentId, me, request.getContent());
+        return ResponseEntity.ok(updated);
     }
 
     // 댓글 삭제

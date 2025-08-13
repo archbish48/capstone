@@ -25,6 +25,7 @@ import org.springframework.web.util.UriUtils;
 
 import java.io.FileNotFoundException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
@@ -168,20 +169,19 @@ public class NoticeController {
     public ResponseEntity<Resource> downloadAttachment(@RequestParam String filename) {
         try {
             Resource resource = noticeService.getAttachmentFile(filename);
-            String encodedFilename = UriUtils.encode(filename, StandardCharsets.UTF_8);
+
+            // 헤더에 들어갈 "표시용 파일명"은 베이스네임만 사용
+            String displayName = Paths.get(filename).getFileName().toString();
+            String encoded = UriUtils.encode(displayName, StandardCharsets.UTF_8);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + encodedFilename + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encoded + "\"")
                     .body(resource);
 
         } catch (FileNotFoundException e) {
-            // 파일이 존재하지 않는 경우 404 에러 띄우기
             return ResponseEntity.notFound().build();
-
         } catch (Exception e) {
-            // 기타 예외는 서버 에러 (500)
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -190,13 +190,15 @@ public class NoticeController {
     @GetMapping("/image-download")
     public ResponseEntity<Resource> downloadImage(@RequestParam String filename) {
         try {
-            Resource resource = noticeService.getAttachmentFile(filename);  // Service 호출
-            String encodedFilename = UriUtils.encode(filename, StandardCharsets.UTF_8);
+            Resource resource = noticeService.getAttachmentFile(filename);
+
+            // 이미지도 동일하게 베이스네임만 헤더에 사용
+            String displayName = Paths.get(filename).getFileName().toString();
+            String encoded = UriUtils.encode(displayName, StandardCharsets.UTF_8);
 
             return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)  // 무조건 다운로드
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + encodedFilename + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM) // 강제 다운로드 유지
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encoded + "\"")
                     .body(resource);
 
         } catch (FileNotFoundException e) {
@@ -212,11 +214,11 @@ public class NoticeController {
         try {
             Resource resource = noticeService.getAttachmentFile(filename);
 
-            // 확장자 기반으로 MIME 타입 추정
+            // 확장자 기반 MIME 추정: 논리경로여도 확장자만 보므로 정상 작동
             Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(filename);
 
             return ResponseEntity.ok()
-                    .contentType(mediaType.orElse(MediaType.IMAGE_JPEG))  // fallback 타입
+                    .contentType(mediaType.orElse(MediaType.IMAGE_JPEG))
                     .body(resource);
 
         } catch (FileNotFoundException e) {

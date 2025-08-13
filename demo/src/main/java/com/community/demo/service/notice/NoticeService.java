@@ -25,7 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -44,8 +46,8 @@ public class NoticeService {
     private final FileStorageService fileStorageService;
     private final BookmarkService bookmarkService;
 
-    @Value("${file.dir}")
-    private String fileDir;
+//    @Value("${file.dir}")
+//    private String fileDir;
 
 
     //  목록 조회 - 페이징, 최신순, 썸네일 이미지 포함 (공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부)
@@ -189,37 +191,23 @@ public class NoticeService {
         ));
     }
 
-    // 내가 작성한 공지사항 전체 리스트 조회 API (6개씩 페이징 할 경우 이 코드 사용)
-//    public Page<NoticeListResponse> getMyNotices(User user, Pageable pageable) {
-//        Set<Long> bookmarkedAuthorIds = bookmarkService.getBookmarkedAuthorIds(user);
-//
-//        return noticeRepository.findByAuthorIdOrderByUpdatedAtDesc(user.getId(), pageable)
-//                .map(notice -> new NoticeListResponse(
-//                        notice.getId(),
-//                        notice.getUpdatedAt(),
-//                        notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-//                        bookmarkedAuthorIds.contains(notice.getAuthor().getId())
-//                ));
-//    }
 
-    // 첨부파일, 이미지 다운로드 및 이미지 미리보기 API (재사용)
+    // 첨부파일, 이미지 다운로드 및 이미지 미리보기 API (다운로드, 프리뷰 공용)
+    @Transactional(readOnly = true)
     public Resource getAttachmentFile(String filename) throws FileNotFoundException {
+        // filename 에 "/files/..."가 넘어오면 접두어 제거해서 논리경로로 변환
+        String storagePath = (filename != null && filename.startsWith("/files/"))
+                ? filename.substring("/files/".length())
+                : filename;
+
         try {
-            Path path = Paths.get(fileDir).resolve(filename).normalize();
-            Resource resource = new UrlResource(path.toUri());
-
-            if (!resource.exists()) {
-                throw new FileNotFoundException("첨부파일이 존재하지 않습니다: " + filename);
-            }
-
-            return resource;
-
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("잘못된 파일 경로", e);
+            return fileStorageService.loadAsResource(storagePath);
+        } catch (NoSuchFileException e) {
+            throw new FileNotFoundException("파일을 찾을 수 없습니다: " + filename);
+        } catch (IOException e) {
+            throw new RuntimeException("파일 로드 실패: " + filename, e);
         }
     }
-
-
 
 
 
@@ -229,8 +217,7 @@ public class NoticeService {
                                  List<MultipartFile> imageFiles,
                                  List<MultipartFile> attachmentFiles) {
 
-        requireManagerOrAdmin(user); // MANAGER or ADMIN 검증 함수
-
+        requireManagerOrAdmin(user);
 
         Notice notice = new Notice();
         notice.setTitle(dto.getTitle());
@@ -239,9 +226,10 @@ public class NoticeService {
         notice.setAuthor(user);
 
         // 이미지 저장
-        List<NoticeImage> images = imageFiles.stream()
+        List<NoticeImage> images = (imageFiles == null ? List.<MultipartFile>of() : imageFiles).stream()
                 .map(file -> {
-                    String url = fileStorageService.save(file);  // 추상화된 파일 저장 서비스
+                    String logicalPath = fileStorageService.save(file, "notices/images");
+                    String url = "/files/" + logicalPath;
                     NoticeImage img = new NoticeImage();
                     img.setImageUrl(url);
                     img.setNotice(notice);
@@ -250,10 +238,11 @@ public class NoticeService {
                 .toList();
         notice.setImages(images);
 
-        // 첨부파일 저장
-        List<Attachment> attachments = attachmentFiles.stream()
+        // 첨부 저장
+        List<Attachment> attachments = (attachmentFiles == null ? List.<MultipartFile>of() : attachmentFiles).stream()
                 .map(file -> {
-                    String url = fileStorageService.save(file);
+                    String logicalPath = fileStorageService.save(file, "notices/attachments");
+                    String url = "/files/" + logicalPath;
                     Attachment att = new Attachment();
                     att.setFileUrl(url);
                     att.setNotice(notice);
@@ -264,11 +253,9 @@ public class NoticeService {
 
         noticeRepository.save(notice);
 
-        // 대상 학과 학생에게 알림 생성
-        List<User> targets =
-                userRepository.findByDepartmentAndRoleType(dto.getDepartment(), RoleType.STUDENT);
-        targets.forEach(u -> notificationRepository.save(
-                new Notification(null, u, notice, false, null)));
+        // 대상 학과 학생에게 알림
+        List<User> targets = userRepository.findByDepartmentAndRoleType(dto.getDepartment(), RoleType.STUDENT);
+        targets.forEach(u -> notificationRepository.save(new Notification(null, u, notice, false, null)));
 
         return toResponse(notice);
     }
@@ -285,41 +272,43 @@ public class NoticeService {
         notice.setTitle(dto.getTitle());
         notice.setText(dto.getText());
 
-        //  기존 첨부파일 하나씩 제거
+        // 기존 첨부 제거
         List<Attachment> oldAttachments = new ArrayList<>(notice.getAttachments());
         for (Attachment att : oldAttachments) {
             notice.removeAttachment(att);
         }
 
-        //  기존 이미지 하나씩 제거
+        // 기존 이미지 제거
         List<NoticeImage> oldImages = new ArrayList<>(notice.getImages());
         for (NoticeImage img : oldImages) {
             notice.removeImage(img);
         }
 
-        //  새 이미지 저장 (addAll 로 리스트 유지)
-        List<NoticeImage> images = newImageFiles.stream()
+        // 새 이미지 저장
+        List<NoticeImage> images = (newImageFiles == null ? List.<MultipartFile>of() : newImageFiles).stream()
                 .map(file -> {
-                    String url = fileStorageService.save(file);
+                    String logicalPath = fileStorageService.save(file, "notices/images");
+                    String url = "/files/" + logicalPath;
                     NoticeImage img = new NoticeImage();
                     img.setImageUrl(url);
                     img.setNotice(notice);
                     return img;
                 })
                 .toList();
-        notice.getImages().addAll(images); // ❗ setImages → getImages().addAll
+        notice.getImages().addAll(images);
 
-        //  새 첨부파일 저장
-        List<Attachment> attachments = newAttachmentFiles.stream()
+        // 새 첨부 저장
+        List<Attachment> attachments = (newAttachmentFiles == null ? List.<MultipartFile>of() : newAttachmentFiles).stream()
                 .map(file -> {
-                    String url = fileStorageService.save(file);
+                    String logicalPath = fileStorageService.save(file, "notices/attachments");
+                    String url = "/files/" + logicalPath;
                     Attachment att = new Attachment();
                     att.setFileUrl(url);
                     att.setNotice(notice);
                     return att;
                 })
                 .toList();
-        notice.getAttachments().addAll(attachments); // ❗ setAttachments → getAttachments().addAll
+        notice.getAttachments().addAll(attachments);
 
         return toResponse(notice);
     }
@@ -330,6 +319,9 @@ public class NoticeService {
         Notice n = findOr404(id);
         requireManagerOrAdmin(me);
         noticeRepository.delete(n);
+
+        // 필요 시 실제 파일 삭제 로직을 추가 가능:
+        // n.getImages() / n.getAttachments()의 url 에서 "/files/" 제거 → fileStorageService.resolve(논리경로)로 실제 Path 찾아 삭제
     }
 
     /* --------- 헬퍼 --------- */
@@ -350,9 +342,19 @@ public class NoticeService {
         List<String> attachmentUrls = notice.getAttachments().stream()
                 .map(Attachment::getFileUrl)
                 .toList();
-        
-        return new NoticeResponse(notice.getId(), notice.getTitle(), notice.getText(),notice.getAuthor().getId(),
-                notice.getDepartment(), notice.getCreatedAt(), notice.getUpdatedAt(), imageUrls, attachmentUrls, false);
+
+        return new NoticeResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getText(),
+                notice.getAuthor().getId(),
+                notice.getDepartment(),
+                notice.getCreatedAt(),
+                notice.getUpdatedAt(),
+                imageUrls,
+                attachmentUrls,
+                false
+        );
     }
 
 
