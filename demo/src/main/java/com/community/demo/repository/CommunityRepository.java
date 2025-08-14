@@ -33,7 +33,7 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
                 OR LOWER(t)       LIKE LOWER(CONCAT('%', :keyword, '%')))
         AND (:authorId IS NULL OR c.author.id = :authorId)
         AND (:onlyBookmarked = false OR b.id IS NOT NULL)
-        ORDER BY c.updatedAt DESC
+        ORDER BY c.createdAt DESC
         """)
     Page<Community> searchLatestFlexible(@Param("keyword") String keyword,
                                          @Param("authorId") Long authorId,              // 내 글 필터 (null 가능)

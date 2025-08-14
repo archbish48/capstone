@@ -7,12 +7,14 @@ import lombok.Getter;
 
 @Data
 public class MyBriefProfileResponse {
+    private final Long userId;
     private final String username;         // 이름
     private final String student_number;   // 학번
     private final String department;       // 학과
     private final RoleType roleType;
 
-    private MyBriefProfileResponse(String username, String student_number, String department, RoleType roleType) {
+    private MyBriefProfileResponse(Long userId, String username, String student_number, String department, RoleType roleType) {
+        this.userId = userId;
         this.username = username;
         this.student_number = student_number;
         this.department = department;
@@ -21,6 +23,7 @@ public class MyBriefProfileResponse {
 
     public static MyBriefProfileResponse from(User u) {
         return new MyBriefProfileResponse(
+                u.getId(),
                 u.getUsername(),
                 u.getStudent_number(),
                 u.getDepartment(),

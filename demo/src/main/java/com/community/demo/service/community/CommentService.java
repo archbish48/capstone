@@ -40,8 +40,8 @@ public class CommentService {
         return comments.map(c -> new CommentResponse(
                 c.getId(),
                 c.getAuthor().getId(),
-                c.getAuthor().getDepartment(),
                 c.getContent(),
+                c.getAuthor().getDepartment(),
                 c.getCreatedAt()
         ));
     }
