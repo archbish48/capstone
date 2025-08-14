@@ -30,10 +30,7 @@ import java.net.MalformedURLException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -46,8 +43,25 @@ public class NoticeService {
     private final FileStorageService fileStorageService;
     private final BookmarkService bookmarkService;
 
-//    @Value("${file.dir}")
-//    private String fileDir;
+    private static final EnumSet<RoleType> WRITER_ROLES =
+            EnumSet.of(RoleType.STAFF, RoleType.MANAGER, RoleType.ADMIN);
+
+    private static final EnumSet<RoleType> EDIT_ANY_ROLES =
+            EnumSet.of(RoleType.MANAGER, RoleType.ADMIN);
+
+    // 작성 권한: STAFF/MANAGER/ADMIN
+    private void requireWriterRole(User user) {
+        if (user == null || user.getRoleType() == null || !WRITER_ROLES.contains(user.getRoleType())) {
+            throw new AccessDeniedException("권한 없음");
+        }
+    }
+
+    // 수정·삭제 권한: ADMIN/MANAGER 이면 무조건 허용, 아니면 작성자 본인만
+    private boolean canModify(Notice notice, User user) {
+        if (user == null || user.getRoleType() == null) return false;
+        if (EDIT_ANY_ROLES.contains(user.getRoleType())) return true;
+        return notice.getAuthor() != null && Objects.equals(notice.getAuthor().getId(), user.getId());
+    }
 
 
     //  목록 조회 - 페이징, 최신순, 썸네일 이미지 포함 (공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부)
@@ -217,7 +231,7 @@ public class NoticeService {
                                  List<MultipartFile> imageFiles,
                                  List<MultipartFile> attachmentFiles) {
 
-        requireManagerOrAdmin(user);
+        requireWriterRole(user); // ← 변경: STAFF, MANAGER, ADMIN 통과
 
         Notice notice = new Notice();
         notice.setTitle(dto.getTitle());
@@ -267,7 +281,10 @@ public class NoticeService {
                                  List<MultipartFile> newImageFiles,
                                  List<MultipartFile> newAttachmentFiles) {
         Notice notice = findOr404(id);
-        requireManagerOrAdmin(user);
+
+        if (!canModify(notice, user)) { // ← 변경: MANAGER/ADMIN or 본인만
+            throw new AccessDeniedException("권한 없음");
+        }
 
         notice.setTitle(dto.getTitle());
         notice.setText(dto.getText());
@@ -317,7 +334,11 @@ public class NoticeService {
     @Transactional
     public void delete(Long id, User me) {
         Notice n = findOr404(id);
-        requireManagerOrAdmin(me);
+
+        if (!canModify(n, me)) { // ← 변경
+            throw new AccessDeniedException("권한 없음");
+        }
+
         noticeRepository.delete(n);
 
         // 필요 시 실제 파일 삭제 로직을 추가 가능:

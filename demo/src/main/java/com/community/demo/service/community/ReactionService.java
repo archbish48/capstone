@@ -30,23 +30,26 @@ public class ReactionService {
 
         if (opt.isEmpty()) {                // 첫 투표
             reactionRepository.save(new Reaction(post, me, newType));
-            applyCounter(post, newType, +1);
+            applyCounter(postId, newType, +1);   //  엔티티 저장 없이 직접 증감
         } else {
             Reaction r = opt.get();
-            if (r.getType() == newType) {   // 같은 버튼 → 취소
+            if (r.getType() == newType) {    // 같은 버튼 → 취소
                 reactionRepository.delete(r);
-                applyCounter(post, newType, -1);
-            } else {                        // 다른 버튼 → 교체
-                applyCounter(post, r.getType(), -1);
-                r.setType(newType);
-                applyCounter(post, newType, +1);
+                applyCounter(postId, newType, -1);
+            } else {                         // 다른 버튼 → 교체
+                applyCounter(postId, r.getType(), -1);
+                r.setType(newType);          // Reaction 만 변경 (post 는 건드리지 않음)
+                // JPA 가 r 변경은 flush 할 것임
+                applyCounter(postId, newType, +1);
             }
         }
-        communityRepository.save(post);           // 집계컬럼 업데이트
     }
 
-    private void applyCounter(Community p, ReactionType t, int delta) {
-        if (t == ReactionType.LIKE)    p.setLikeCount(p.getLikeCount() + delta);
-        else                           p.setDislikeCount(p.getDislikeCount() + delta);
+    private void applyCounter(Long postId, ReactionType type, int delta) {
+        if (type == ReactionType.LIKE) {
+            communityRepository.bumpLikeCount(postId, delta);
+        } else {
+            communityRepository.bumpDislikeCount(postId, delta);
+        }
     }
 }

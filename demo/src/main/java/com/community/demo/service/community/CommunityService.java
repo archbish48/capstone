@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,8 +38,10 @@ public class CommunityService {
     private final CommentRepository commentRepository;
     private final ReactionRepository reactionRepository;
 
-//    @Value("${file.dir}")
-//    private String fileDir;
+    // 권한 체크: ADMIN / MANAGER 이면 항상 허용, 아니면 작성자 본인만 허용
+    private static final EnumSet<RoleType> CAN_EDIT_ANY =
+            EnumSet.of(RoleType.ADMIN, RoleType.MANAGER);
+
 
     // 공용 파일 저장 서비스 사용
     private final FileStorageService fileStorage;
@@ -62,7 +65,7 @@ public class CommunityService {
         Community post = communityRepository.findById(postId)
                 .orElseThrow(() -> new NoSuchElementException("해당 글이 존재하지 않습니다"));
 
-        if (!isOwnerOrAdmin(post, me)) {
+        if (!canModify(post, me)) {
             throw new AccessDeniedException("수정 권한이 없습니다");
         }
 
@@ -73,6 +76,9 @@ public class CommunityService {
         // 기존 이미지 제거 후 새로 저장
         imageRepository.deleteByPost(post);
         saveImages(images, post);
+
+        //  콘텐츠를 실제로 수정했으므로 여기서만 갱신 적용
+        post.setUpdatedAt(LocalDateTime.now());
 
         return toResponse(post, me);
     }
@@ -109,7 +115,7 @@ public class CommunityService {
         System.out.println("me.id = " + me.getId());
         System.out.println("me.role = " + me.getRoleType());
 
-        if (!isOwnerOrAdmin(post, me)) {
+        if (!canModify(post, me)) {
             throw new AccessDeniedException("삭제 권한이 없습니다");
         }
 
@@ -168,14 +174,25 @@ public class CommunityService {
     public CommunityResponse getPostById(Long id, User me) {
         Community post = communityRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("글이 존재하지 않습니다"));
-        return toResponse(post, me);
+
+        String myReaction = findMyReaction(post, me); // 사용자의 반응 조회
+        return toResponse(post, me, myReaction);      // 3-인자 버전 호출
+    }
+
+    // 현재 유저의 reaction 값 조회 함수
+    private String findMyReaction(Community post, User me) {
+        return reactionRepository.findByPostAndUser(post, me)
+                .map(r -> r.getType().name())
+                .orElse(null);
     }
 
 
 
     // 권한 체크
-    private boolean isOwnerOrAdmin(Community post, User user) {
-        return post.getAuthor().getId().equals(user.getId()) || user.getRoleType() == RoleType.ADMIN;
+    private boolean canModify(Community post, User user) {
+        if (user == null || user.getRoleType() == null) return false;
+        if (CAN_EDIT_ANY.contains(user.getRoleType())) return true;
+        return Objects.equals(post.getAuthor().getId(), user.getId());
     }
 
 
@@ -197,6 +214,7 @@ public class CommunityService {
                 post.getId(),
                 post.getTitle(),
                 post.getText(),
+                post.getAuthor().getId(),
                 post.getAuthor().getUsername(),
                 post.getAuthor().getDepartment(),
                 post.getAuthor().getRoleType().name(),

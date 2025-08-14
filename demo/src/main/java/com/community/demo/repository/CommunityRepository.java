@@ -5,13 +5,21 @@ import com.community.demo.domain.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 public interface CommunityRepository extends JpaRepository<Community, Long> {
-    List<Community> findByAuthor(User user);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Community c set c.likeCount = c.likeCount + :delta where c.id = :postId")
+    int bumpLikeCount(@Param("postId") Long postId, @Param("delta") int delta);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Community c set c.dislikeCount = c.dislikeCount + :delta where c.id = :postId")
+    int bumpDislikeCount(@Param("postId") Long postId, @Param("delta") int delta);
 
     // 최신순
     @Query("""

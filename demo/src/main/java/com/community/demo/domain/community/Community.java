@@ -56,9 +56,10 @@ public class Community {
     private Set<String> tags = new HashSet<>();
 
     @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @Column
     private LocalDateTime updatedAt;
 
     public Community(String title, String text, User author) {

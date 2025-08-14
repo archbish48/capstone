@@ -8,6 +8,9 @@ import com.community.demo.dto.community.CommunityResponse;
 import com.community.demo.service.community.CommentService;
 import com.community.demo.service.community.CommunityService;
 import com.community.demo.service.community.ReactionService;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +41,11 @@ public class CommunityController {
     public ResponseEntity<CommunityResponse> create(
             @RequestPart("title") String title,
             @RequestPart("text") String text,
+            //  배열로 선언 + Swagger 에 배열임을 명시
+            @Parameter(
+                    description = "반복해서 넣을 수 있는 태그",
+                    array = @ArraySchema(schema = @Schema(type = "string"))
+            )
             @RequestPart(value = "tags", required = false) String tagsString,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
 
@@ -128,10 +136,14 @@ public class CommunityController {
         return ResponseEntity.ok().build();
     }
 
-    // 댓글 조회
+    // 댓글 조회 (페이징)
     @GetMapping("/{postId}/comments")
-    public ResponseEntity<List<CommentResponse>> listComments(@PathVariable Long postId) {
-        return ResponseEntity.ok(commentService.list(postId));
+    public ResponseEntity<Page<CommentResponse>> listComments(
+            @PathVariable Long postId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size
+    ) {
+        return ResponseEntity.ok(commentService.list(postId, page, size));
     }
 
     // 댓글 작성

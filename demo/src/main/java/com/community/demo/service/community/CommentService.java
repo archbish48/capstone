@@ -8,6 +8,10 @@ import com.community.demo.dto.community.CommentResponse;
 import com.community.demo.repository.CommentRepository;
 import com.community.demo.repository.CommunityRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,17 +26,24 @@ public class CommentService {
     private final CommentRepository commentRepo;
     private final CommunityRepository communityRepo;
 
-    // 댓글 목록
+    // 댓글 목록 (페이징)
     @Transactional(readOnly = true)
-    public List<CommentResponse> list(Long postId) {
-        return commentRepo.findByPostIdOrderByCreatedAt(postId)
-                .stream()
-                .map(c -> new CommentResponse(
-                        c.getId(),
-                        c.getContent(),
-                        c.getAuthor().getDepartment(),
-                        c.getCreatedAt()))
-                .toList();
+    public Page<CommentResponse> list(Long postId, int page, int size) {
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id")) // 오래된 순 + 안정적 2차 정렬
+        );
+
+        Page<Comment> comments = commentRepo.findByPostId(postId, pageable);
+
+        return comments.map(c -> new CommentResponse(
+                c.getId(),
+                c.getAuthor().getId(),
+                c.getAuthor().getDepartment(),
+                c.getContent(),
+                c.getCreatedAt()
+        ));
     }
 
     // 작성
@@ -47,7 +58,7 @@ public class CommentService {
         c.setContent(content);
         commentRepo.save(c);
 
-        return new CommentResponse(c.getId(), c.getContent(), me.getDepartment(), c.getCreatedAt());
+        return new CommentResponse(c.getId(), c.getAuthor().getId(), c.getContent(), me.getDepartment(), c.getCreatedAt());
     }
     // 댓글 수정
     @Transactional
@@ -71,6 +82,7 @@ public class CommentService {
 
         return new CommentResponse(
                 c.getId(),
+                c.getAuthor().getId(),
                 c.getContent(),
                 c.getAuthor().getDepartment(),
                 c.getCreatedAt()

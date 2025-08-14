@@ -15,6 +15,7 @@ public class CommunityResponse {
     private String title;
     private String text;
 
+    private Long authorId;
     private String authorName;
     private String authorDepartment;
     private String authorRole;      //작성자의 권한

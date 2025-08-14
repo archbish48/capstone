@@ -29,19 +29,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
-                        // notices (공지사항) 권한 규칙
-                        .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()               // 열람 자유
-                        .requestMatchers(HttpMethod.POST, "/notices/**").hasAnyRole("MANAGER", "ADMIN") // POST, PATCH, DELETE 모두 MANAGER 와 ADMIN 등급만 가능
-                        .requestMatchers(HttpMethod.PATCH, "/notices/**").hasAnyRole("MANAGER", "ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/notices/**").hasAnyRole("MANAGER", "ADMIN")
+                        // notices (공지사항) 관련 규칙
+                        .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
+                        .requestMatchers(HttpMethod.POST,   "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
+                        .requestMatchers(HttpMethod.PATCH,  "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
 
 
                         // 댓글·리액션은 로그인 필요
                         .requestMatchers("/community/*/reactions").authenticated()
                         .requestMatchers("/community/*/comments/**").authenticated()
 
-                        // 나머지 커뮤니티 GET 은 열람 자유
+                        // 커뮤니티 글: GET 은 전체 공개, 나머지는 로그인만 통과 (세부 권한은 @PreAuthorize 에서)
                         .requestMatchers(HttpMethod.GET, "/community/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/community/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/community/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/community/**").authenticated()
 
 
                         // 그 외 모든 요청은 전부 인증 필요
