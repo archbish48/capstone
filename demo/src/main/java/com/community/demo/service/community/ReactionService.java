@@ -26,23 +26,30 @@ public class ReactionService {
         Community post = communityRepository.findById(postId)
                 .orElseThrow(() -> new NoSuchElementException("post"));
 
-        Optional<Reaction> opt = reactionRepository.findByPostAndUser(post, me);
+        Optional<Reaction> opt = reactionRepository.findByPostIdAndUserId(postId, me.getId());
 
-        if (opt.isEmpty()) {                // 첫 투표
+        if (opt.isEmpty()) {                 // 첫 투표
             reactionRepository.save(new Reaction(post, me, newType));
-            applyCounter(postId, newType, +1);   //  엔티티 저장 없이 직접 증감
-        } else {
-            Reaction r = opt.get();
-            if (r.getType() == newType) {    // 같은 버튼 → 취소
-                reactionRepository.delete(r);
-                applyCounter(postId, newType, -1);
-            } else {                         // 다른 버튼 → 교체
-                applyCounter(postId, r.getType(), -1);
-                r.setType(newType);          // Reaction 만 변경 (post 는 건드리지 않음)
-                // JPA 가 r 변경은 flush 할 것임
-                applyCounter(postId, newType, +1);
-            }
+            applyCounter(postId, newType, +1);
+            return;
         }
+
+        Reaction r = opt.get();
+        ReactionType oldType = r.getType();
+
+        if (oldType == newType) {            // 같은 버튼 → 취소
+            reactionRepository.delete(r);
+            applyCounter(postId, newType, -1);
+            return;
+        }
+
+        //  다른 버튼 → 교체: 타입 변경을 "먼저" 확정 저장
+        r.setType(newType);
+        reactionRepository.save(r);          // 또는 entityManager.flush()
+
+        // 그런 다음 카운터 벌크 업데이트 (벌크가 컨텍스트 clear 하지 않도록 1번에서 수정)
+        applyCounter(postId, oldType, -1);
+        applyCounter(postId, newType, +1);
     }
 
     private void applyCounter(Long postId, ReactionType type, int delta) {

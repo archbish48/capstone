@@ -142,8 +142,10 @@ public class CommunityService {
 
         return result.map(post -> {
             CommunityResponse res = toResponse(post, me);
-            // getAllPosts에서만 myReaction 세팅
-            reactionRepository.findByPostAndUser(post, me).ifPresent(r -> res.setMyReaction(r.getType().name()));
+            String my = reactionRepository.findByPostIdAndUserId(post.getId(), me.getId())
+                    .map(r -> r.getType().name())
+                    .orElse(null);
+            res.setMyReaction(my);
             return res;
         });
     }
@@ -171,12 +173,16 @@ public class CommunityService {
     }
 
     // 단일 글 조회
+    @Transactional(readOnly = true)
     public CommunityResponse getPostById(Long id, User me) {
         Community post = communityRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("글이 존재하지 않습니다"));
 
-        String myReaction = findMyReaction(post, me); // 사용자의 반응 조회
-        return toResponse(post, me, myReaction);      // 3-인자 버전 호출
+        String myReaction = reactionRepository.findByPostIdAndUserId(post.getId(), me.getId())
+                .map(r -> r.getType().name())
+                .orElse(null);
+
+        return toResponse(post, me, myReaction); // 3-인자 버전 호출
     }
 
     // 현재 유저의 reaction 값 조회 함수

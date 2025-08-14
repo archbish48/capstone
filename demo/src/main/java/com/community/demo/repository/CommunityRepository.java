@@ -13,11 +13,11 @@ import java.util.List;
 
 public interface CommunityRepository extends JpaRepository<Community, Long> {
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("update Community c set c.likeCount = c.likeCount + :delta where c.id = :postId")
     int bumpLikeCount(@Param("postId") Long postId, @Param("delta") int delta);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(flushAutomatically = true)
     @Query("update Community c set c.dislikeCount = c.dislikeCount + :delta where c.id = :postId")
     int bumpDislikeCount(@Param("postId") Long postId, @Param("delta") int delta);
 

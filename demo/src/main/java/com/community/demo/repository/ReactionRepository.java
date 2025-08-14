@@ -9,4 +9,5 @@ import java.util.Optional;
 
 public interface ReactionRepository extends JpaRepository<Reaction, Long> {
     Optional<Reaction> findByPostAndUser(Community post, User user);
+    Optional<Reaction> findByPostIdAndUserId(Long postId, Long userId);
 }
