@@ -9,6 +9,7 @@ import com.community.demo.domain.user.User;
 import com.community.demo.dto.notice.NoticeListResponse;
 import com.community.demo.dto.notice.NoticeRequest;
 import com.community.demo.dto.notice.NoticeResponse;
+import com.community.demo.dto.notice.NotificationList;
 import com.community.demo.repository.NoticeRepository;
 import com.community.demo.repository.NotificationRepository;
 import com.community.demo.repository.UserRepository;
@@ -64,13 +65,12 @@ public class NoticeService {
     }
 
 
-    //  목록 조회 - 페이징, 최신순, 썸네일 이미지 포함 (공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부)
+    //  목록 조회 - 페이징, 최신순, 이미지, 첨부파일 포함 (공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부)
     @Transactional(readOnly = true)
     public Page<NoticeListResponse> getFilteredNotices(List<String> departments, String keyword, Pageable pageable, User user) {
         Set<Long> bookmarkedAuthors = bookmarkService.getBookmarkedAuthorIds(user);
 
         Page<Notice> notices;
-
         boolean hasDepartments = departments != null && !departments.isEmpty();
         boolean hasKeyword = keyword != null && !keyword.isBlank();
 
@@ -88,18 +88,28 @@ public class NoticeService {
             notices = noticeRepository.findAll(pageable);
         }
 
-        return notices.map(notice -> new NoticeListResponse(
-                notice.getId(),
-                notice.getTitle(),
-                notice.getText(),
-                notice.getAuthor().getId(),
-                notice.getAuthor().getUsername(),
-                notice.getAuthor().getRoleType().name(),
-                notice.getCreatedAt(),
-                notice.getUpdatedAt(),
-                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-                bookmarkedAuthors.contains(notice.getAuthor().getId())
-        ));
+        return notices.map(notice -> {
+            List<String> imageUrls = notice.getImages().stream()
+                    .map(NoticeImage::getImageUrl)
+                    .toList();
+            List<String> attachmentUrls = notice.getAttachments().stream()
+                    .map(Attachment::getFileUrl)
+                    .toList();
+
+            return new NoticeListResponse(
+                    notice.getId(),
+                    notice.getTitle(),
+                    notice.getText(),
+                    notice.getAuthor().getId(),
+                    notice.getAuthor().getUsername(),
+                    notice.getAuthor().getRoleType().name(),
+                    notice.getCreatedAt(),
+                    notice.getUpdatedAt(),
+                    imageUrls,            // ← 0번 썸네일 대신 전체 이미지 리스트
+                    attachmentUrls,       // ← 첨부 전체 리스트
+                    bookmarkedAuthors.contains(notice.getAuthor().getId())
+            );
+        });
     }
 
     //  상세 조회 - 공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부
@@ -138,30 +148,36 @@ public class NoticeService {
             User user, List<String> departments, String keyword, Pageable pageable) {
 
         Set<Long> bookmarkedAuthorIds = bookmarkService.getBookmarkedAuthorIds(user);
+        if (bookmarkedAuthorIds.isEmpty()) return Page.empty(pageable);
 
-        if (bookmarkedAuthorIds.isEmpty()) {
-            return Page.empty(pageable); // 페이지 메타 보존
-        }
-
-        // 빈 리스트 -> null 로 변환 (JPQL optional 조건 처리)
         List<String> deptParam = (departments == null || departments.isEmpty()) ? null : departments;
         String kw = (keyword != null && !keyword.isBlank()) ? keyword : null;
 
         Page<Notice> page = noticeRepository.findByBookmarkedAuthorsWithFilters(
                 bookmarkedAuthorIds, deptParam, kw, pageable);
 
-        return page.map(notice -> new NoticeListResponse(
-                notice.getId(),
-                notice.getTitle(),
-                notice.getText(),
-                notice.getAuthor().getId(),
-                notice.getAuthor().getUsername(),
-                notice.getAuthor().getRoleType().name(),
-                notice.getCreatedAt(),
-                notice.getUpdatedAt(),
-                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-                true // 북마크 탭이므로 항상 true
-        ));
+        return page.map(notice -> {
+            List<String> imageUrls = notice.getImages().stream()
+                    .map(NoticeImage::getImageUrl)
+                    .toList();
+            List<String> attachmentUrls = notice.getAttachments().stream()
+                    .map(Attachment::getFileUrl)
+                    .toList();
+
+            return new NoticeListResponse(
+                    notice.getId(),
+                    notice.getTitle(),
+                    notice.getText(),
+                    notice.getAuthor().getId(),
+                    notice.getAuthor().getUsername(),
+                    notice.getAuthor().getRoleType().name(),
+                    notice.getCreatedAt(),
+                    notice.getUpdatedAt(),
+                    imageUrls,
+                    attachmentUrls,
+                    true
+            );
+        });
     }
 
 
@@ -169,21 +185,30 @@ public class NoticeService {
     @Transactional(readOnly = true)
     public Page<NoticeListResponse> getNoticesByAuthor(Long authorId, User currentUser, Pageable pageable) {
         Page<Notice> notices = noticeRepository.findByAuthorIdOrderByUpdatedAtDesc(authorId, pageable);
-
         Set<Long> bookmarkedAuthors = bookmarkService.getBookmarkedAuthorIds(currentUser);
 
-        return notices.map(notice -> new NoticeListResponse(
-                notice.getId(),
-                notice.getTitle(),
-                notice.getText(),
-                notice.getAuthor().getId(),
-                notice.getAuthor().getUsername(),
-                notice.getAuthor().getRoleType().name(),
-                notice.getCreatedAt(),
-                notice.getUpdatedAt(),
-                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-                bookmarkedAuthors.contains(notice.getAuthor().getId())
-        ));
+        return notices.map(notice -> {
+            List<String> imageUrls = notice.getImages().stream()
+                    .map(NoticeImage::getImageUrl)
+                    .toList();
+            List<String> attachmentUrls = notice.getAttachments().stream()
+                    .map(Attachment::getFileUrl)
+                    .toList();
+
+            return new NoticeListResponse(
+                    notice.getId(),
+                    notice.getTitle(),
+                    notice.getText(),
+                    notice.getAuthor().getId(),
+                    notice.getAuthor().getUsername(),
+                    notice.getAuthor().getRoleType().name(),
+                    notice.getCreatedAt(),
+                    notice.getUpdatedAt(),
+                    imageUrls,
+                    attachmentUrls,
+                    bookmarkedAuthors.contains(notice.getAuthor().getId())
+            );
+        });
     }
 
     // 내가 작성한 공지사항 전체 리스트 조회 API ( 페이지 없이 전체 공지사항을 리스트로 반환)
@@ -191,18 +216,28 @@ public class NoticeService {
     public Page<NoticeListResponse> getMyNotices(String keyword, Pageable pageable, User user) {
         Page<Notice> page = noticeRepository.findMyNotices(user.getId(), keyword, pageable);
 
-        return page.map(notice -> new NoticeListResponse(
-                notice.getId(),
-                notice.getTitle(),
-                notice.getText(),
-                notice.getAuthor().getId(),
-                notice.getAuthor().getUsername(),
-                notice.getAuthor().getRoleType().name(),
-                notice.getCreatedAt(),
-                notice.getUpdatedAt(),
-                notice.getImages().isEmpty() ? null : notice.getImages().get(0).getImageUrl(),
-                false // 내가 쓴 글이므로 북마크는 항상 false
-        ));
+        return page.map(notice -> {
+            List<String> imageUrls = notice.getImages().stream()
+                    .map(NoticeImage::getImageUrl)
+                    .toList();
+            List<String> attachmentUrls = notice.getAttachments().stream()
+                    .map(Attachment::getFileUrl)
+                    .toList();
+
+            return new NoticeListResponse(
+                    notice.getId(),
+                    notice.getTitle(),
+                    notice.getText(),
+                    notice.getAuthor().getId(),
+                    notice.getAuthor().getUsername(),
+                    notice.getAuthor().getRoleType().name(),
+                    notice.getCreatedAt(),
+                    notice.getUpdatedAt(),
+                    imageUrls,
+                    attachmentUrls,
+                    false   // 내가 쓴 글이므로 북마크는 false
+            );
+        });
     }
 
 
@@ -269,7 +304,9 @@ public class NoticeService {
 
         // 대상 학과 학생에게 알림
         List<User> targets = userRepository.findByDepartmentAndRoleType(dto.getDepartment(), RoleType.STUDENT);
-        targets.forEach(u -> notificationRepository.save(new Notification(null, u, notice, false, null)));
+
+        // 1) 단건씩 notice 저장
+        targets.forEach(u -> notificationRepository.save(new Notification(u, notice)));
 
         return toResponse(notice);
     }
@@ -344,6 +381,23 @@ public class NoticeService {
         // 필요 시 실제 파일 삭제 로직을 추가 가능:
         // n.getImages() / n.getAttachments()의 url 에서 "/files/" 제거 → fileStorageService.resolve(논리경로)로 실제 Path 찾아 삭제
     }
+
+    // 내 알림 리스트 가져오는 API
+    @Transactional(readOnly = true)
+    public Page<NotificationList> getMyNotifications(User me, Pageable pageable) {
+        // fetch join 버전 사용
+        Page<Notification> page = notificationRepository.findLatestByReceiver(me, pageable);
+
+        return page.map(n -> new NotificationList(
+                n.getId(),
+                n.getNotice().getId(),
+                n.getNotice().getTitle(),
+                n.getNotice().getDepartment(),
+                n.isRead(),
+                n.getCreatedAt()
+        ));
+    }
+
 
     /* --------- 헬퍼 --------- */
     private Notice findOr404(Long id) {

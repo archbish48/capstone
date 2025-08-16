@@ -9,16 +9,9 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
-
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import java.nio.file.*;
 
 @Slf4j
 @Service
@@ -47,7 +40,7 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
     public String save(MultipartFile file, String subDir) {
         try {
             String safeOriginal = sanitize(file.getOriginalFilename());
-            String filename = UUID.randomUUID() + "_" + safeOriginal;
+            String filename = lowerExt(safeOriginal);
 
             Path targetDir = (subDir == null || subDir.isBlank())
                     ? rootDir
@@ -58,18 +51,40 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
             }
             Files.createDirectories(targetDir);
 
-            Path target = targetDir.resolve(filename).normalize();
-            Files.copy(file.getInputStream(), target, REPLACE_EXISTING);
+            // 충돌 시 파일명 뒤에 (1), (2) 붙임
+            String uniqueName = uniquify(targetDir, filename);
+            Path target = targetDir.resolve(uniqueName).normalize();
 
-            // 저장된 '논리 경로'를 반환 (컨트롤러에서는 "/files/" + 논리경로 로 접근 가능)
-            String logicalPath = (subDir == null || subDir.isBlank())
-                    ? filename
-                    : subDir.replace('\\', '/') + "/" + filename;
+            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
-            return logicalPath;
+            return (subDir == null || subDir.isBlank())
+                    ? uniqueName
+                    : subDir.replace('\\', '/') + "/" + uniqueName;
+
         } catch (IOException e) {
             throw new RuntimeException("파일 저장 실패", e);
         }
+    }
+
+    private String lowerExt(String name) {
+        if (name == null) return "file";
+        int dot = name.lastIndexOf('.');
+        if (dot < 0) return name;
+        return name.substring(0, dot) + name.substring(dot).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    // 충돌 방지 버전(덮어쓰기 방지, 파일(1).jpg 식으로 저장)
+    private String uniquify(Path dir, String filename) throws IOException {
+        int dot = filename.lastIndexOf('.');
+        String base = (dot < 0) ? filename : filename.substring(0, dot);
+        String ext  = (dot < 0) ? ""       : filename.substring(dot); // 이미 소문자
+
+        String candidate = filename;
+        int i = 1;
+        while (Files.exists(dir.resolve(candidate))) {
+            candidate = base + "(" + i++ + ")" + ext;
+        }
+        return candidate;
     }
 
     @Override

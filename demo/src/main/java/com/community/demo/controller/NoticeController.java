@@ -5,6 +5,7 @@ import com.community.demo.domain.user.User;
 import com.community.demo.dto.notice.NoticeListResponse;
 import com.community.demo.dto.notice.NoticeRequest;
 import com.community.demo.dto.notice.NoticeResponse;
+import com.community.demo.dto.notice.NotificationList;
 import com.community.demo.service.notice.BookmarkService;
 import com.community.demo.service.notice.NoticeService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -49,7 +50,10 @@ public class NoticeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
+        Pageable pageable = PageRequest.of(
+                page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         bookmarkService.autoSubscribeToDepartmentManager(me);
@@ -126,7 +130,7 @@ public class NoticeController {
     ) {
         Pageable pageable = PageRequest.of(
                 page, size,
-                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt"))
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
         );
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
@@ -141,7 +145,7 @@ public class NoticeController {
             @RequestParam(defaultValue = "6") int size) {
 
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Pageable pageable = PageRequest.of(page, size, Sort.by("updatedAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
         return noticeService.getNoticesByAuthor(authorId, me, pageable);
     }
@@ -155,7 +159,7 @@ public class NoticeController {
     ) {
         Pageable pageable = PageRequest.of(
                 page, size,
-                Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt"))
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
         );
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
@@ -228,6 +232,19 @@ public class NoticeController {
         }
     }
 
+    //알림창에서 내가 확인하지 않은 공지사항 보여주기 api
+    @GetMapping("/notifications/me")
+    public Page<NotificationList> myNotifications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        // 정렬은 쿼리에서 고정했으므로 여기서는 정렬 미지정
+        Pageable pageable = PageRequest.of(page, size);
+
+        return noticeService.getMyNotifications(me, pageable);
+    }
 
 
 

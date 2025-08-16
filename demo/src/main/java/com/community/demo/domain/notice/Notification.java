@@ -2,39 +2,37 @@ package com.community.demo.domain.notice;
 
 import com.community.demo.domain.user.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Table(name = "notifications")
-public class Notification { // 알림 저장용 테이블
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA용 기본 생성자
+public class Notification {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private User receiver;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private Notice notice;
 
-    @Column(name = "`read`")
+    @Column(name = "`read`", nullable = false)
     private boolean read = false;
+
     private LocalDateTime createdAt;
 
-    public Notification(Object id, User user, Notice notice, boolean read, LocalDateTime createdAt) {
+    public Notification(User receiver, Notice notice) {
+        this.receiver = receiver;
+        this.notice = notice;
+        this.read = false;
     }
 
     @PrePersist
     void onCreate() {
-        createdAt = LocalDateTime.now(); }
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
 }
