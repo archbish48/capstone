@@ -232,18 +232,16 @@ public class NoticeController {
         }
     }
 
-    //알림창에서 내가 확인하지 않은 공지사항 보여주기 api
+    // 미읽음 알림 1페이지 조회 + 선택적으로 해당 페이지만 읽음 처리
     @GetMapping("/notifications/me")
-    public Page<NotificationList> myNotifications(
+    public Page<NotificationList> getMyUnreadNotifications(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "true") boolean markRead // true면 이 페이지 읽음 처리
     ) {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        // 정렬은 쿼리에서 고정했으므로 여기서는 정렬 미지정
-        Pageable pageable = PageRequest.of(page, size);
-
-        return noticeService.getMyNotifications(me, pageable);
+        Pageable pageable = PageRequest.of(page, size); // 정렬은 쿼리에서 고정
+        return noticeService.getMyUnreadPageAndMarkRead(me, pageable, markRead);
     }
 
 

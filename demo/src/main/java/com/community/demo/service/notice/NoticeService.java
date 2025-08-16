@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -382,20 +383,31 @@ public class NoticeService {
         // n.getImages() / n.getAttachments()의 url 에서 "/files/" 제거 → fileStorageService.resolve(논리경로)로 실제 Path 찾아 삭제
     }
 
-    // 내 알림 리스트 가져오는 API
-    @Transactional(readOnly = true)
-    public Page<NotificationList> getMyNotifications(User me, Pageable pageable) {
-        // fetch join 버전 사용
-        Page<Notification> page = notificationRepository.findLatestByReceiver(me, pageable);
+    @Transactional // 조회 후 업데이트까지 한 트랜잭션에서 처리
+    public Page<NotificationList> getMyUnreadPageAndMarkRead(User me, Pageable pageable, boolean markRead) {
+        // 1) 미읽음 알림 "현재 페이지" 조회 (최신순은 쿼리에서 고정)
+        Page<Notification> page = notificationRepository.findUnreadByReceiverPaged(me, pageable);
 
-        return page.map(n -> new NotificationList(
-                n.getId(),
-                n.getNotice().getId(),
-                n.getNotice().getTitle(),
-                n.getNotice().getDepartment(),
-                n.isRead(),
-                n.getCreatedAt()
-        ));
+        // 2) DTO 매핑
+        List<NotificationList> items = page.getContent().stream()
+                .map(n -> new NotificationList(
+                        n.getId(),
+                        n.getNotice().getId(),
+                        n.getNotice().getTitle(),
+                        n.getNotice().getDepartment(),
+                        n.isRead(),            // 여기서는 false일 것
+                        n.getCreatedAt()
+                ))
+                .toList();
+
+        // 3) 보여준 것만 읽음 처리
+        if (markRead && !items.isEmpty()) {
+            List<Long> ids = page.getContent().stream().map(Notification::getId).toList();
+            notificationRepository.markAsReadByIds(me, ids);
+        }
+
+        // 4) 같은 페이지 메타로 반환 (totalElements는 업데이트 전 기준)
+        return new PageImpl<>(items, pageable, page.getTotalElements());
     }
 
 
