@@ -24,9 +24,9 @@ public class NoticeListResponse {
     private LocalDateTime createdAt;   // 필요 없으면 추후 제거
     private LocalDateTime updatedAt;
 
-    // 썸네일 필드 제거하고, 전체 리스트로 변경
-    private List<String> imageUrls;       // 전체 이미지 URL 목록
-    private List<String> attachmentUrls;  // 전체 첨부파일 URL 목록
+    // 전체 이미지/첨부 리스트 (id+url)
+    private List<FileItemResponse> images;
+    private List<FileItemResponse> attachments;
 
     private boolean bookmarked;
 }

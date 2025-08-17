@@ -87,11 +87,11 @@ public class NoticeService {
         }
 
         return notices.map(notice -> {
-            List<String> imageUrls = notice.getImages().stream()
-                    .map(NoticeImage::getImageUrl)
+            List<FileItemResponse> imageItems = notice.getImages().stream()
+                    .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
                     .toList();
-            List<String> attachmentUrls = notice.getAttachments().stream()
-                    .map(Attachment::getFileUrl)
+            List<FileItemResponse> attachmentItems = notice.getAttachments().stream()
+                    .map(att -> new FileItemResponse(att.getId(), att.getFileUrl()))
                     .toList();
 
             return new NoticeListResponse(
@@ -103,8 +103,8 @@ public class NoticeService {
                     notice.getAuthor().getRoleType().name(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
-                    imageUrls,            // ← 0번 썸네일 대신 전체 이미지 리스트
-                    attachmentUrls,       // ← 첨부 전체 리스트
+                    imageItems,
+                    attachmentItems,       // ← 첨부 전체 리스트
                     bookmarkedAuthors.contains(notice.getAuthor().getId())
             );
         });
@@ -156,11 +156,11 @@ public class NoticeService {
                 bookmarkedAuthorIds, deptParam, kw, pageable);
 
         return page.map(notice -> {
-            List<String> imageUrls = notice.getImages().stream()
-                    .map(NoticeImage::getImageUrl)
+            List<FileItemResponse> imageItems = notice.getImages().stream()
+                    .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
                     .toList();
-            List<String> attachmentUrls = notice.getAttachments().stream()
-                    .map(Attachment::getFileUrl)
+            List<FileItemResponse> attachmentItems = notice.getAttachments().stream()
+                    .map(att -> new FileItemResponse(att.getId(), att.getFileUrl()))
                     .toList();
 
             return new NoticeListResponse(
@@ -172,8 +172,8 @@ public class NoticeService {
                     notice.getAuthor().getRoleType().name(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
-                    imageUrls,
-                    attachmentUrls,
+                    imageItems,
+                    attachmentItems,
                     true
             );
         });
@@ -190,11 +190,11 @@ public class NoticeService {
         Set<Long> bookmarkedAuthors = bookmarkService.getBookmarkedAuthorIds(currentUser);
 
         return notices.map(notice -> {
-            List<String> imageUrls = notice.getImages().stream()
-                    .map(NoticeImage::getImageUrl)
+            List<FileItemResponse> imageItems = notice.getImages().stream()
+                    .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
                     .toList();
-            List<String> attachmentUrls = notice.getAttachments().stream()
-                    .map(Attachment::getFileUrl)
+            List<FileItemResponse> attachmentItems = notice.getAttachments().stream()
+                    .map(att -> new FileItemResponse(att.getId(), att.getFileUrl()))
                     .toList();
 
             return new NoticeListResponse(
@@ -206,8 +206,8 @@ public class NoticeService {
                     notice.getAuthor().getRoleType().name(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
-                    imageUrls,
-                    attachmentUrls,
+                    imageItems,
+                    attachmentItems,
                     bookmarkedAuthors.contains(notice.getAuthor().getId())
             );
         });
@@ -219,11 +219,11 @@ public class NoticeService {
         Page<Notice> page = noticeRepository.findMyNotices(user.getId(), keyword, pageable);
 
         return page.map(notice -> {
-            List<String> imageUrls = notice.getImages().stream()
-                    .map(NoticeImage::getImageUrl)
+            List<FileItemResponse> imageItems = notice.getImages().stream()
+                    .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
                     .toList();
-            List<String> attachmentUrls = notice.getAttachments().stream()
-                    .map(Attachment::getFileUrl)
+            List<FileItemResponse> attachmentItems = notice.getAttachments().stream()
+                    .map(att -> new FileItemResponse(att.getId(), att.getFileUrl()))
                     .toList();
 
             return new NoticeListResponse(
@@ -235,8 +235,8 @@ public class NoticeService {
                     notice.getAuthor().getRoleType().name(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
-                    imageUrls,
-                    attachmentUrls,
+                    imageItems,
+                    attachmentItems,
                     false   // 내가 쓴 글이므로 북마크는 false
             );
         });
@@ -446,7 +446,7 @@ public class NoticeService {
                 && user.getRoleType() != RoleType.ADMIN)
             throw new AccessDeniedException("권한 없음");
     }
-    private NoticeResponse toResponse(Notice notice) {  //기존 코드에서 첨부파일, 이미지, 그리고 createdAt을 없애고 이제는 updatedAt을 리턴하도록 변경
+    private NoticeResponse toResponse(Notice notice) {
         List<FileItemResponse> imageItems = notice.getImages().stream()
                 .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
                 .toList();
