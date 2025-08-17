@@ -3,16 +3,25 @@ package com.community.demo.repository;
 import com.community.demo.domain.notice.Notice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
-    Page<Notice> findByAuthorIdOrderByUpdatedAtDesc(Long authorId, Pageable pageable);  // 작성자 ID 기준으로 페이징하며 최신순 정렬
+    @Query("""
+        select n from Notice n
+        left join fetch n.author a
+        left join fetch n.images i
+        left join fetch n.attachments att
+        where n.id = :id
+    """)
+    Optional<Notice> findByIdWithDetails(@Param("id") Long id);
 
     // 제목 또는 내용에 keyword 포함 여부 확인
     @Query("SELECT n FROM Notice n WHERE " +

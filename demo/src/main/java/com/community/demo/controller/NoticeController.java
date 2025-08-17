@@ -2,10 +2,7 @@ package com.community.demo.controller;
 
 
 import com.community.demo.domain.user.User;
-import com.community.demo.dto.notice.NoticeListResponse;
-import com.community.demo.dto.notice.NoticeRequest;
-import com.community.demo.dto.notice.NoticeResponse;
-import com.community.demo.dto.notice.NotificationList;
+import com.community.demo.dto.notice.*;
 import com.community.demo.service.notice.BookmarkService;
 import com.community.demo.service.notice.NoticeService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -95,20 +92,19 @@ public class NoticeController {
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<NoticeResponse> update(
             @PathVariable Long id,
-            @RequestPart("notice") String noticeJson,  // JSON 문자열로 받음
+            @RequestPart("notice") String noticeJson,
             @RequestPart(value = "images", required = false) List<MultipartFile> newImageFiles,
-            @RequestPart(value = "attachments", required = false) List<MultipartFile> newAttachmentFiles) throws JsonProcessingException {
+            @RequestPart(value = "attachments", required = false) List<MultipartFile> newAttachmentFiles
+    ) throws JsonProcessingException {
 
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
         if (newImageFiles == null) newImageFiles = List.of();
         if (newAttachmentFiles == null) newAttachmentFiles = List.of();
 
-        // 👇 JSON 문자열 → 객체 변환
         ObjectMapper mapper = new ObjectMapper();
-        NoticeRequest noticeRequest = mapper.readValue(noticeJson, NoticeRequest.class);
+        NoticeUpdateRequest request = mapper.readValue(noticeJson, NoticeUpdateRequest.class);
 
-        NoticeResponse updated = noticeService.update(id, noticeRequest, me, newImageFiles, newAttachmentFiles);
+        NoticeResponse updated = noticeService.update(id, request, me, newImageFiles, newAttachmentFiles);
         return ResponseEntity.ok(updated);
     }
 

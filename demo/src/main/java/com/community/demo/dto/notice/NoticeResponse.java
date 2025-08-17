@@ -15,9 +15,12 @@ public class NoticeResponse {
 
     private Long authorId;
     private String department;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<String> imageUrls;     //이미지 url
-    private List<String> attachmentUrls;    // 첨부파일
-    private boolean isBookmarked; //  북마크 정보 추가
+
+    private List<FileItemResponse> images;      // 수정을 위해 변경: id+url
+    private List<FileItemResponse> attachments; // 수정을 위해 변경: id+url
+
+    private boolean bookmarked;
 }
