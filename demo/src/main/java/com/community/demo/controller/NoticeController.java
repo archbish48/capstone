@@ -141,13 +141,18 @@ public class NoticeController {
     @GetMapping("/author/{authorId}")
     public Page<NoticeListResponse> getNoticesByAuthor(
             @PathVariable Long authorId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
 
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
 
-        return noticeService.getNoticesByAuthor(authorId, me, pageable);
+        Pageable pageable = PageRequest.of(
+                page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")) // 최신순
+        );
+
+        return noticeService.getNoticesByAuthor(authorId, keyword, me, pageable);
     }
 
     // 내가 작성한 공지사항 전부 반환

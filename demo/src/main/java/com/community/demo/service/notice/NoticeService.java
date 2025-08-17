@@ -184,8 +184,11 @@ public class NoticeService {
 
     // 특정 작성자의 공지사항을 최신순으로 6개씩 조회하는 API
     @Transactional(readOnly = true)
-    public Page<NoticeListResponse> getNoticesByAuthor(Long authorId, User currentUser, Pageable pageable) {
-        Page<Notice> notices = noticeRepository.findByAuthorIdOrderByUpdatedAtDesc(authorId, pageable);
+    public Page<NoticeListResponse> getNoticesByAuthor(Long authorId, String keyword, User currentUser, Pageable pageable) {
+        // keyword 정규화 (null/blank → null)
+        String kw = (keyword != null && !keyword.isBlank()) ? keyword : null;
+
+        Page<Notice> notices = noticeRepository.findByAuthorIdAndKeyword(authorId, kw, pageable);
         Set<Long> bookmarkedAuthors = bookmarkService.getBookmarkedAuthorIds(currentUser);
 
         return notices.map(notice -> {
