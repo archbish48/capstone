@@ -19,8 +19,8 @@ public class NoticeResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private List<FileItemResponse> images;      // 수정을 위해 변경: id+url
-    private List<FileItemResponse> attachments; // 수정을 위해 변경: id+url
+    private List<FileItemResponse> images;          // 수정을 위해 변경: id+url
+    private List<FileItemResponse> attachments;     // 수정을 위해 변경: id+url
 
     private boolean bookmarked;
 }

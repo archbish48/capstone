@@ -15,11 +15,10 @@ import java.util.Set;
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     @Query("""
-        select n from Notice n
-        left join fetch n.author a
-        left join fetch n.images i
-        left join fetch n.attachments att
-        where n.id = :id
+    select distinct n from Notice n
+    left join fetch n.author a
+    left join fetch n.images i
+    where n.id = :id
     """)
     Optional<Notice> findByIdWithDetails(@Param("id") Long id);
 

@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
 
 import java.time.LocalDateTime;
@@ -38,10 +40,11 @@ public class Notice {       //공지사항 테이블
     private List<Notification> notifications = new ArrayList<>();
 
     @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<NoticeImage> images = new ArrayList<>();
+    @Fetch(FetchMode.SUBSELECT)        // ← attachments 는 fetch join 하지 말고 SUB SELECT 로
+    private List<Attachment> attachments = new ArrayList<>();
 
     @OneToMany(mappedBy = "notice", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Attachment> attachments = new ArrayList<>();
+    private List<NoticeImage> images = new ArrayList<>();
 
 
     private LocalDateTime createdAt;
