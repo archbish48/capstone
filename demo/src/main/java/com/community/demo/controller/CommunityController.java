@@ -5,6 +5,8 @@ import com.community.demo.domain.user.User;
 import com.community.demo.service.community.CommentService;
 import com.community.demo.service.community.CommunityService;
 import com.community.demo.service.community.ReactionService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,6 +33,7 @@ public class CommunityController {
     private final CommunityService communityService;    // 커뮤니티 전반적 총괄
     private final ReactionService reactionService;      //  토글 담당
     private final CommentService commentService;        //  댓글 담당
+    private final ObjectMapper objectMapper;
 
     // 게시글 작성
     // 문자열 하나로 받아서 ,로 나눈 뒤 List<String>으로 변환
@@ -59,9 +62,12 @@ public class CommunityController {
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommunityResponse> update(
             @PathVariable Long id,
-            @RequestPart("payload") CommunityUpdateRequest payload,            // JSON
-            @RequestPart(value = "images", required = false) List<MultipartFile> newImages // 새로 추가할 이미지들
-    ) {
+            @RequestPart("payload") String payloadJson, // ← 문자열로 받기
+            @RequestPart(value = "images", required = false) List<MultipartFile> newImages
+    ) throws JsonProcessingException {
+
+        CommunityUpdateRequest payload = objectMapper.readValue(payloadJson, CommunityUpdateRequest.class);
+
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(communityService.updatePost(id, payload, newImages, me));
     }
