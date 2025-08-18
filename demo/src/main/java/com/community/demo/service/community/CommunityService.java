@@ -114,9 +114,6 @@ public class CommunityService {
             }
         }
 
-        // 4) (선택) updatedAt 수동 갱신 — @PreUpdate가 있으면 생략 가능
-        post.setUpdatedAt(LocalDateTime.now());
-
         return toResponse(post, me); // myReaction은 단건 조회엔 포함하지 않는 정책 유지
     }
 

@@ -59,8 +59,20 @@ public class Community {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column
+    @Column(nullable = true)
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        // 최초 생성 시에만 createdAt 세팅, updatedAt 건드리지 않음
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        // 엔티티가 변경되어 flush/update 될 때마다 갱신
+        this.updatedAt = LocalDateTime.now();
+    }
 
     public Community(String title, String text, User author) {
         this.title = title;
