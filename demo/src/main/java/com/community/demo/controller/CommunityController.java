@@ -1,10 +1,7 @@
 package com.community.demo.controller;
 
-import com.community.demo.dto.community.CommentRequest;
-import com.community.demo.dto.community.CommentResponse;
-import com.community.demo.dto.community.ReactionRequest;
+import com.community.demo.dto.community.*;
 import com.community.demo.domain.user.User;
-import com.community.demo.dto.community.CommunityResponse;
 import com.community.demo.service.community.CommentService;
 import com.community.demo.service.community.CommunityService;
 import com.community.demo.service.community.ReactionService;
@@ -62,19 +59,11 @@ public class CommunityController {
     @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommunityResponse> update(
             @PathVariable Long id,
-            @RequestPart("title") String title,
-            @RequestPart("text") String text,
-            @RequestPart(value = "tags", required = false) String tagsString,
-            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-
+            @RequestPart("payload") CommunityUpdateRequest payload,            // JSON
+            @RequestPart(value = "images", required = false) List<MultipartFile> newImages // 새로 추가할 이미지들
+    ) {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        // 콤마로 분리해서 리스트로 변환
-        List<String> tags = (tagsString != null && !tagsString.isBlank())
-                ? Arrays.stream(tagsString.split(",")).map(String::trim).toList()
-                : null;
-
-        return ResponseEntity.ok(communityService.updatePost(id, title, text, tags, images, me));
+        return ResponseEntity.ok(communityService.updatePost(id, payload, newImages, me));
     }
 
     // 게시글 삭제

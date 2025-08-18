@@ -35,4 +35,6 @@ public class Comment {      // 댓글 테이블 엔티티
     @CreationTimestamp  //현재 시간을 값으로 채워서 쿼리 생성
     private LocalDateTime createdAt;
 
+    private LocalDateTime updatedAt;
+
 }

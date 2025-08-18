@@ -67,5 +67,15 @@ public class Community {
         this.text = text;
         this.author = author;
     }
+
+    public void addImage(CommunityImage img) {
+        this.getImages().add(img);
+        img.setPost(this);
+    }
+
+    public void removeImage(CommunityImage img) {
+        this.getImages().remove(img); // orphanRemoval=true면 DB 삭제
+        img.setPost(null);
+    }
 }
 

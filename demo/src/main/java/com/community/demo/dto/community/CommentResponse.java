@@ -13,4 +13,5 @@ public class CommentResponse {
     private String content;
     private String authorDept;        // 학과만 보여줌
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

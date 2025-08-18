@@ -12,6 +12,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
+import java.text.Normalizer;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -22,6 +24,44 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
     private String configuredDir;
 
     private Path rootDir;
+
+    // 클래스 상단에 추가 (한 번만 정의)
+    private static final Pattern ILLEGAL_WINDOWS = Pattern.compile("[<>:\"/\\\\|?*]"); // Windows 금지문자
+    private static final Pattern CONTROL_CHARS  = Pattern.compile("[\\p{Cntrl}]");      // 제어문자
+    // 허용: 유니코드 문자(\p{L}), 숫자(\p{N}), 공백(\p{Zs}), 그리고 . _ - ( ) [ ]
+    private static final Pattern DISALLOWED     = Pattern.compile("[^\\p{L}\\p{N}\\p{Zs}._()\\[\\]-]");
+
+    private String sanitize(String original) {
+        if (original == null || original.isBlank()) return "file";
+
+        // 경로 분리자 제거 (브라우저가 C:\fakepath\... 보낼 때 대비)
+        String base = Paths.get(original.replace("\\", "/")).getFileName().toString();
+
+        // 유니코드 정규화(NFC) – 한글 조합형/분해형 섞임 방지
+        String nfc = Normalizer.normalize(base, Normalizer.Form.NFC);
+
+        // Windows 금지문자 / 제어문자 제거
+        nfc = ILLEGAL_WINDOWS.matcher(nfc).replaceAll("_");
+        nfc = CONTROL_CHARS.matcher(nfc).replaceAll("_");
+
+        // 허용 외 문자는 언더스코어로
+        String safe = DISALLOWED.matcher(nfc).replaceAll("_");
+
+        // 공백 축약 및 양끝 공백 제거
+        safe = safe.replaceAll("\\p{Zs}+", " ").trim();
+
+        // 이름이 텅 비면 기본명
+        if (safe.isBlank()) safe = "file";
+
+        // 확장자만 소문자
+        int dot = safe.lastIndexOf('.');
+        if (dot >= 0) {
+            String name = safe.substring(0, dot);
+            String ext  = safe.substring(dot).toLowerCase(java.util.Locale.ROOT);
+            safe = name + ext;
+        }
+        return safe;
+    }
 
     @PostConstruct
     public void init() throws IOException {
@@ -41,7 +81,7 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
         try {
             String safeOriginal = sanitize(file.getOriginalFilename());
             String filename = lowerExt(safeOriginal);
-
+            //중복 방지
             Path targetDir = (subDir == null || subDir.isBlank())
                     ? rootDir
                     : rootDir.resolve(subDir).normalize();
@@ -56,7 +96,7 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
             Path target = targetDir.resolve(uniqueName).normalize();
 
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-
+            //논리경로 반환
             return (subDir == null || subDir.isBlank())
                     ? uniqueName
                     : subDir.replace('\\', '/') + "/" + uniqueName;
@@ -110,9 +150,4 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
         return rootDir;
     }
 
-    private String sanitize(String original) {
-        if (original == null) return "file";
-        String base = Paths.get(original.replace("\\", "/")).getFileName().toString();
-        return base.replaceAll("[^a-zA-Z0-9._-가-힣\\s]", "_");
-    }
 }

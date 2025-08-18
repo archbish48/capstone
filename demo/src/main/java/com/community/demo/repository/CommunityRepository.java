@@ -53,7 +53,7 @@ public interface CommunityRepository extends JpaRepository<Community, Long> {
                 OR LOWER(t)       LIKE LOWER(CONCAT('%', :keyword, '%')))
         AND (:authorId IS NULL OR c.author.id = :authorId)
         AND (:onlyBookmarked = false OR b.id IS NOT NULL)
-        ORDER BY (c.likeCount - c.dislikeCount) DESC, c.updatedAt DESC
+        ORDER BY (c.likeCount - c.dislikeCount) DESC, c.createdAt DESC
         """)
     Page<Community> searchPopularFlexible(@Param("keyword") String keyword,
                                           @Param("authorId") Long authorId,

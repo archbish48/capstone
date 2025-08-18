@@ -441,11 +441,7 @@ public class NoticeService {
         return noticeRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("notice"));
     }
-    private void requireManagerOrAdmin(User user) {
-        if (user.getRoleType() != RoleType.MANAGER
-                && user.getRoleType() != RoleType.ADMIN)
-            throw new AccessDeniedException("권한 없음");
-    }
+
     private NoticeResponse toResponse(Notice notice) {
         List<FileItemResponse> imageItems = notice.getImages().stream()
                 .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
