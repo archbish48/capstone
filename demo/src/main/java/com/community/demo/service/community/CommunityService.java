@@ -8,6 +8,7 @@ import com.community.demo.domain.user.User;
 import com.community.demo.dto.community.CommunityResponse;
 import com.community.demo.domain.community.Community;
 import com.community.demo.dto.community.CommunityUpdateRequest;
+import com.community.demo.dto.community.ImageItemResponse;
 import com.community.demo.repository.*;
 import com.community.demo.service.notice.FileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -266,8 +267,9 @@ public class CommunityService {
 
     // 응답 변환
     private CommunityResponse toResponse(Community post, User me, String myReaction) {
-        List<String> imageUrls = post.getImages().stream()
-                .map(CommunityImage::getImageUrl)
+        //  이미지 id+url로 매핑
+        List<ImageItemResponse> images = post.getImages().stream()
+                .map(img -> new ImageItemResponse(img.getId(), img.getImageUrl()))
                 .toList();
 
         int commentCount = commentRepository.countByPostId(post.getId());
@@ -283,7 +285,7 @@ public class CommunityService {
                 post.getAuthor().getRoleType().name(),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
-                imageUrls,
+                images,
                 new ArrayList<>(post.getTags()),
                 post.getLikeCount(),
                 post.getDislikeCount(),

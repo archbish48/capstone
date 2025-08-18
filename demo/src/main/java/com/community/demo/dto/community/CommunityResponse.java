@@ -24,7 +24,9 @@ public class CommunityResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private List<String> imageUrls;
+    // 이미지 id + url 리스트
+    private List<ImageItemResponse> images;
+
     private List<String> tags;
 
     private int likeCount;
