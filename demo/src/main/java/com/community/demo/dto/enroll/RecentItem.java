@@ -9,10 +9,9 @@ import java.time.Instant;
 
 @Getter
 @AllArgsConstructor
-public class FinishResponse {
-    private long measuredMs;
-    private BigDecimal measuredSeconds;
-    private BigDecimal diffVsOthersSeconds; // 내기록 - 타유저평균 (음수면 내가 더 빠름)
-    private EnrollMode mode;
+public class RecentItem {
     private Instant finishedAt;
+    private Long durationMs;
+    private BigDecimal durationSeconds;
+    private EnrollMode mode;
 }

@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 @Entity
 @Getter
@@ -36,9 +39,18 @@ public class User {     //유저 정보 테이블
     @Column(nullable = false)
     private RoleStatus roleStatus = RoleStatus.ACTIVE; // STUDENT 는 즉시 활성
 
-    // 수강신청 최고 기록 (단위: 밀리초). null 이면 아직 기록 없음으로 간주
-    @Column(name = "best_enroll_record_ms")
-    private Long bestEnrollRecordMs;
+    // 모드별 최근 5개 측정시간(ms) 캐시 (최신이 앞)
+    @ElementCollection(fetch = FetchType.EAGER)     // EAGER 는 항상 즉시 로딩됨
+    @CollectionTable(name = "user_recent_basic", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "duration_ms")
+    @OrderColumn(name = "idx")
+    private List<Long> recentBasicMs = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_recent_cart", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "duration_ms")
+    @OrderColumn(name = "idx")
+    private List<Long> recentCartMs = new ArrayList<>();
 
 
 
@@ -55,13 +67,18 @@ public class User {     //유저 정보 테이블
         this.roleStatus = (roleType == RoleType.STUDENT) ? RoleStatus.ACTIVE : RoleStatus.PENDING;
     }
 
-    // 주어진 durationMs가 더 짧으면 신기록 갱신
-    public boolean updateBestIfBetter(long durationMs) {
-        if (bestEnrollRecordMs == null || durationMs < bestEnrollRecordMs) {
-            bestEnrollRecordMs = durationMs;
-            return true;
-        }
-        return false;
+    // BASIC 모드 최근5 push & trim
+    public void pushRecentBasic(long durationMs) {
+        if (recentBasicMs == null) recentBasicMs = new ArrayList<>();
+        recentBasicMs.add(0, durationMs);
+        while (recentBasicMs.size() > 5) recentBasicMs.remove(recentBasicMs.size() - 1);
+    }
+
+    // CART 모드 최근5 push & trim
+    public void pushRecentCart(long durationMs) {
+        if (recentCartMs == null) recentCartMs = new ArrayList<>();
+        recentCartMs.add(0, durationMs);
+        while (recentCartMs.size() > 5) recentCartMs.remove(recentCartMs.size() - 1);
     }
 
 }

@@ -1,10 +1,8 @@
 package com.community.demo.controller;
 
+import com.community.demo.domain.user.EnrollMode;
 import com.community.demo.domain.user.User;
-import com.community.demo.dto.enroll.AverageResponse;
-import com.community.demo.dto.enroll.FinishResponse;
-import com.community.demo.dto.enroll.MyBestResponse;
-import com.community.demo.dto.enroll.StartResponse;
+import com.community.demo.dto.enroll.*;
 import com.community.demo.service.user.EnrollTimerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,10 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
@@ -32,64 +27,59 @@ public class EnrollTimerController {
 
     private final EnrollTimerService timerService;
 
-    // 타이머 시작
+    // 타이머 시작 (기존과 동일)
     @Operation(summary = "타이머 시작", security = @SecurityRequirement(name = "JWT"))
     @PostMapping("/start")
     public ResponseEntity<StartResponse> start(@AuthenticationPrincipal User me) {
-        if (me == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         var startedAt = timerService.start(me);
         return ResponseEntity.ok(new StartResponse(startedAt, "타이머를 시작했습니다."));
     }
 
-    // 타이머 종료 + 결과 반환 + 신기록 시 저장
+    // 타이머 종료: 모드(BASIC/CART) 전달 → 기록 저장 + 평균 차이 계산
+    @Operation(summary = "타이머 종료(기록 저장 + 평균차이)", security = @SecurityRequirement(name = "JWT"))
     @PostMapping("/finish")
-    public ResponseEntity<FinishResponse> finish() {
-        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        var result = timerService.finish(me);
+    public ResponseEntity<FinishResponse> finish(@AuthenticationPrincipal User me,
+                                                 @RequestBody FinishRequest req) {
+        var res = timerService.finishAndSave(me, req.getMode());
         return ResponseEntity.ok(new FinishResponse(
-                result.elapsedMs(),
-                result.elapsedSeconds2f(),
-                result.newRecord(),
-                result.updatedBestMs(),
-                result.updatedBestSeconds2f()
+                res.measuredMs(),
+                res.measuredSeconds2f(),
+                res.diffVsOthersSeconds2f(),   // (내기록 - 타유저평균), 음수면 더 빠름
+                res.mode(),
+                res.finishedAt()
         ));
     }
 
-    // 취소 버튼 누르면 측정 중이던 시간 cancel
+    // 최근 5개(모드별)
+    @Operation(summary = "내 최근 5개 기록 조회(모드별)", security = @SecurityRequirement(name = "JWT"))
+    @GetMapping("/me/recent")
+    public ResponseEntity<MyRecent5Response> myRecent5(@AuthenticationPrincipal User me,
+                                                       @RequestParam EnrollMode mode) {
+        return ResponseEntity.ok(timerService.getMyRecent5(me, mode));
+    }
+
+    // 전체 평균(모드별)
+    @Operation(summary = "전체 평균(모드별, 공개)", security = {})
+    @GetMapping("/stats/average-by-mode")
+    public ResponseEntity<AverageByModeResponse> averageByMode() {
+        return ResponseEntity.ok(timerService.getAverageByMode());
+    }
+
+    // 내 1~5번째 기록 + 평균(모드별)
+    @Operation(summary = "내 1~5번째 기록 + 평균(모드별)", security = @SecurityRequirement(name = "JWT"))
+    @GetMapping("/me/summary")
+    public ResponseEntity<MyTop5SummaryResponse> myTop5Summary(@AuthenticationPrincipal User me,
+                                                               @RequestParam EnrollMode mode) {
+        return ResponseEntity.ok(timerService.getMyTop5Summary(me, mode));
+    }
+
+    // (옵션) 취소
+    @Operation(summary = "타이머 취소", security = @SecurityRequirement(name = "JWT"))
     @PostMapping("/cancel")
-    public ResponseEntity<Void> cancel() {
-        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    public ResponseEntity<Void> cancel(@AuthenticationPrincipal User me) {
         timerService.cancel(me);
         return ResponseEntity.noContent().build();
     }
-
-    // 내 최고기록 조회
-    @GetMapping("/me/best")
-    public ResponseEntity<MyBestResponse> myBest() {
-        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long bestMs = timerService.getMyBestMs(me);
-        return ResponseEntity.ok(new MyBestResponse(
-                bestMs,
-                (bestMs == null) ? null : EnrollTimerService.msToSeconds2f(bestMs)
-        ));
-    }
-
-    // 전체 유저 최고기록 평균
-    @GetMapping("/stats/average")
-    public ResponseEntity<AverageResponse> averageBest() {
-        var avgSec2f = timerService.getAverageBestSeconds2f();
-        return ResponseEntity.ok(new AverageResponse(avgSec2f));
-    }
-
-    //테스트용 임시 api
-//    @GetMapping("/debug/whoami")
-//    public Map<String, Object> whoami(Authentication auth) {
-//        return Map.of(
-//                "authenticated", auth != null && auth.isAuthenticated(),
-//                "principalClass", auth != null ? auth.getPrincipal().getClass().getName() : null,
-//                "authorities", auth != null ? auth.getAuthorities() : null
-//        );
-//    }
 
 
 }

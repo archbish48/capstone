@@ -14,9 +14,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     List<User> findByDepartmentAndRoleType(@NotBlank String department, RoleType roleType);
 
-
-    // 모든 유저의 최고 기록 평균(ms) 반환, 기록 없는 유저(null)는 제외해서 계산
-    @Query("select avg(u.bestEnrollRecordMs) from User u where u.bestEnrollRecordMs is not null")
-    Double averageBestRecordMs();
-
 }
