@@ -4,15 +4,19 @@ import com.community.demo.domain.user.User;
 import com.community.demo.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -20,60 +24,59 @@ import java.io.IOException;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    @PostConstruct
+    public void init() {
+        log.warn("[JWT] JwtAuthenticationFilter bean initialized: {}", this);
+    }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        boolean skip = uri.startsWith("/auth/")
+                || uri.startsWith("/v3/api-docs")
+                || uri.startsWith("/swagger-ui")
+                || "/error".equals(uri);
+        log.debug("[JWT] shouldNotFilter={} {} {}", skip, request.getMethod(), uri);
+        return skip;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String uri = req.getRequestURI();
+        String header = req.getHeader("Authorization");
+        log.debug("[JWT] {} {} headerPresent={}", req.getMethod(), uri, header != null);
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
             try {
-                // Claims 추출
-                Claims claims = jwtUtil.parseAccessToken(token);  // parseAccessToken() 추가 필요
-                Long userId = Long.parseLong(claims.getSubject());
-                String role = claims.get("role", String.class);  // 👈 JWT에서 role 꺼냄
+                Claims claims = jwtUtil.parseAccessToken(token); // 유효성 검증 포함
+                Long userId   = Long.parseLong(claims.getSubject());
+                String role   = claims.get("role", String.class);   // e.g. STUDENT / MANAGER ...
 
-
-                User user = userRepository.findById(userId).orElse(null);
-
-                if (user != null) {   // null-check 후에만 사용
-                    // ROLE_MANAGER → SimpleGrantedAuthority 로 변환
-                    List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
-
-                    Authentication auth = new UsernamePasswordAuthenticationToken(
-                            user,
-                            null,
-                            authorities  // 권한 포함
-                    );
+                var user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    String authority = (role != null && role.startsWith("ROLE_")) ? role : "ROLE_" + role;
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            user, null, List.of(new SimpleGrantedAuthority(authority)));
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                     SecurityContextHolder.getContext().setAuthentication(auth);
-
-                    System.out.println("accessToken 수신: " + token);
-                    System.out.println("사용자 ID 인증됨: " + user.getId());
+                    log.debug("[JWT] setAuthentication userId={} authorities={}", user.getId(), auth.getAuthorities());
                 } else {
-                    // DB에 계정이 없는 경우 401 오류
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account not found");
-                    return;
+                    log.debug("[JWT] user not found: {}", userId);
                 }
-
-            } catch (JwtException | IllegalArgumentException e) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                        "Invalid or expired token");
-                return;
+            } catch (Exception e) {
+                log.debug("[JWT] token invalid on {} {} : {}", req.getMethod(), uri, e.getMessage());
             }
         }
-
-        filterChain.doFilter(request, response);
+        chain.doFilter(req, res);
     }
 }

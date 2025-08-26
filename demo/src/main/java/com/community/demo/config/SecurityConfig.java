@@ -2,6 +2,7 @@ package com.community.demo.config;
 
 
 import com.community.demo.jwt.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +11,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -28,6 +30,7 @@ public class SecurityConfig {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/error").permitAll()  // error 열기
 
                         // notices (공지사항) 관련 규칙
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
@@ -46,9 +49,33 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/community/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/community/**").authenticated()
 
+                        //  enroll-timer: 평균은 공개, 나머지는 인증 필요
+                        .requestMatchers(HttpMethod.GET, "/enroll-timer/stats/average").permitAll()
+                        .requestMatchers("/enroll-timer/**").authenticated()
+
+                        // (임시) 디버그: 매핑/보안 확인용
+                        .requestMatchers("/debug/**").permitAll()
+
 
                         // 그 외 모든 요청은 전부 인증 필요
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) -> {
+                            // 401
+                            System.out.printf("401 %s %s : %s%n", req.getMethod(), req.getRequestURI(), e.getMessage());
+                            res.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        })
+                        .accessDeniedHandler((req, res, e) -> {
+                            // 403
+                            var auth = SecurityContextHolder.getContext().getAuthentication();
+                            System.out.printf("403 %s %s : auth=%s, authorities=%s, msg=%s%n",
+                                    req.getMethod(), req.getRequestURI(),
+                                    (auth == null ? null : auth.getPrincipal()),
+                                    (auth == null ? null : auth.getAuthorities()),
+                                    e.getMessage());
+                            res.sendError(HttpServletResponse.SC_FORBIDDEN);
+                        })
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

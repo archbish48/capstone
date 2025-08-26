@@ -36,8 +36,9 @@ public class User {     //유저 정보 테이블
     @Column(nullable = false)
     private RoleStatus roleStatus = RoleStatus.ACTIVE; // STUDENT 는 즉시 활성
 
-
-    //private String profileImageUrl; // 프로필 이미지 변수(null 이면 default 이미지 또는 프사 없음으로 간주)
+    // 수강신청 최고 기록 (단위: 밀리초). null 이면 아직 기록 없음으로 간주
+    @Column(name = "best_enroll_record_ms")
+    private Long bestEnrollRecordMs;
 
 
 
@@ -52,6 +53,15 @@ public class User {     //유저 정보 테이블
 
         // STUDENT 는 ACTIVE, 그 외는 PENDING
         this.roleStatus = (roleType == RoleType.STUDENT) ? RoleStatus.ACTIVE : RoleStatus.PENDING;
+    }
+
+    // 주어진 durationMs가 더 짧으면 신기록 갱신
+    public boolean updateBestIfBetter(long durationMs) {
+        if (bestEnrollRecordMs == null || durationMs < bestEnrollRecordMs) {
+            bestEnrollRecordMs = durationMs;
+            return true;
+        }
+        return false;
     }
 
 }
