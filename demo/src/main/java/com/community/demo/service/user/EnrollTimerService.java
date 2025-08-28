@@ -75,13 +75,14 @@ public class EnrollTimerService {
         userRepository.save(me);
 
         // 3) 타 유저 평균(동일 모드) 계산 → 차이(초)
-        Double othersAvgMs = recordRepository.averageByModeExcludingUser(mode, me.getId());
-        BigDecimal diffSeconds = null;
+        // 저장 이후 (이미 내 방금 기록도 저장되어 있음)
+        Double globalAvgMs = recordRepository.averageByMode(mode); //  전체 평균 (본인 포함)
         BigDecimal measuredSeconds = toSeconds2f(durationMs);
-        if (othersAvgMs != null) {
-            BigDecimal othersAvgSec = toSeconds2f(othersAvgMs.longValue());
-            // 내기록 - 타유저평균 (음수면 내가 빠름)
-            diffSeconds = measuredSeconds.subtract(othersAvgSec).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal diffSeconds = null;
+        if (globalAvgMs != null) {
+            BigDecimal globalAvgSec = toSeconds2f(globalAvgMs.longValue());
+            // 내기록 - "전체 평균(본인 포함)"
+            diffSeconds = measuredSeconds.subtract(globalAvgSec).setScale(2, RoundingMode.HALF_UP);
         }
 
         return new FinishCalc(durationMs, measuredSeconds, diffSeconds, mode, finishedAt);

@@ -13,6 +13,6 @@ public interface EnrollRecordRepository extends JpaRepository<EnrollRecord, Long
     @Query("select avg(r.durationMs) from EnrollRecord r where r.mode = :mode")
     Double averageByMode(EnrollMode mode);
 
-    @Query("select avg(r.durationMs) from EnrollRecord r where r.mode = :mode and r.user.id <> :userId")
-    Double averageByModeExcludingUser(EnrollMode mode, Long userId);
+//    @Query("select avg(r.durationMs) from EnrollRecord r where r.mode = :mode and r.user.id <> :userId")
+//    Double averageByModeExcludingUser(EnrollMode mode, Long userId);
 }
