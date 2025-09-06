@@ -6,6 +6,7 @@ import com.community.demo.dto.notice.*;
 import com.community.demo.service.notice.BookmarkService;
 import com.community.demo.service.notice.NoticeService;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +23,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriUtils;
 
 import java.io.FileNotFoundException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -66,7 +69,6 @@ public class NoticeController {
     }
 
 
-
     //  공지사항 작성 (파일 업로드 포함)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<NoticeResponse> create(
@@ -82,6 +84,7 @@ public class NoticeController {
         // JSON 수동 파싱
         ObjectMapper mapper = new ObjectMapper();
         NoticeRequest noticeRequest = mapper.readValue(noticeJson, NoticeRequest.class);
+
 
         NoticeResponse created = noticeService.create(noticeRequest, me, imageFiles, attachmentFiles);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -233,17 +236,7 @@ public class NoticeController {
         }
     }
 
-    // 미읽음 알림 1페이지 조회 + 선택적으로 해당 페이지만 읽음 처리
-    @GetMapping("/notifications/me")
-    public Page<NotificationList> getMyUnreadNotifications(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "true") boolean markRead // true면 이 페이지 읽음 처리
-    ) {
-        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Pageable pageable = PageRequest.of(page, size); // 정렬은 쿼리에서 고정
-        return noticeService.getMyUnreadPageAndMarkRead(me, pageable, markRead);
-    }
+
 
 
 

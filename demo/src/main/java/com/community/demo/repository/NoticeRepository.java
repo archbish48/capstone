@@ -1,6 +1,8 @@
 package com.community.demo.repository;
 
 import com.community.demo.domain.notice.Notice;
+import com.community.demo.domain.user.User;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;

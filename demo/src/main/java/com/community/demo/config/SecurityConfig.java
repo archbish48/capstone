@@ -47,6 +47,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH,  "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
 
+                        // notifications 알림창 관련 규칙
+                        .requestMatchers("/notifications/**").authenticated()
+
 
                         // 댓글·리액션은 로그인 필요
                         .requestMatchers("/community/*/reactions").authenticated()

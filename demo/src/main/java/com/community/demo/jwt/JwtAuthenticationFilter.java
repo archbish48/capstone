@@ -55,28 +55,58 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = req.getHeader("Authorization");
         log.debug("[JWT] {} {} headerPresent={}", req.getMethod(), uri, header != null);
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            try {
-                Claims claims = jwtUtil.parseAccessToken(token); // 유효성 검증 포함
-                Long userId   = Long.parseLong(claims.getSubject());
-                String role   = claims.get("role", String.class);   // e.g. STUDENT / MANAGER ...
+        try {
+            if (header != null && header.startsWith("Bearer ")) {
+                String token = header.substring(7);
 
-                var user = userRepository.findById(userId).orElse(null);
-                if (user != null) {
-                    String authority = (role != null && role.startsWith("ROLE_")) ? role : "ROLE_" + role;
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            user, null, List.of(new SimpleGrantedAuthority(authority)));
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                    log.debug("[JWT] setAuthentication userId={} authorities={}", user.getId(), auth.getAuthorities());
-                } else {
-                    log.debug("[JWT] user not found: {}", userId);
+                // 1) 토큰 파싱/검증
+                Claims claims = jwtUtil.parseAccessToken(token); // 만료/서명 검증 포함
+                String sub = claims.getSubject();                // 보통 userId
+                if (sub == null) {
+                    log.debug("[JWT] subject(null) in token");
+                    chain.doFilter(req, res);
+                    return;
                 }
-            } catch (Exception e) {
-                log.debug("[JWT] token invalid on {} {} : {}", req.getMethod(), uri, e.getMessage());
+
+                Long userId;
+                try {
+                    userId = Long.parseLong(sub);
+                } catch (NumberFormatException nfe) {
+                    log.debug("[JWT] subject not a number: {}", sub);
+                    chain.doFilter(req, res);
+                    return;
+                }
+
+                // 2) 사용자 로드
+                User user = userRepository.findById(userId).orElse(null);
+                if (user == null) {
+                    log.debug("[JWT] user not found: {}", userId);
+                    chain.doFilter(req, res);
+                    return;
+                }
+
+                // 3) 권한 구성: 토큰의 role 클레임이 없으면 DB의 roleType 사용
+                String claimRole = claims.get("role", String.class); // ex) "STUDENT"
+                String roleName = (claimRole != null && !claimRole.isBlank())
+                        ? claimRole
+                        : (user.getRoleType() != null ? user.getRoleType().name() : "USER");
+
+                String authority = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
+
+                var auth = new UsernamePasswordAuthenticationToken(
+                        user,
+                        null,
+                        List.of(new SimpleGrantedAuthority(authority))
+                );
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("[JWT] setAuthentication userId={} authorities={}", user.getId(), auth.getAuthorities());
             }
+        } catch (Exception e) {
+            // 파싱/검증 실패 시 인증 미설정 상태로 통과 → Security가 401/403 판단
+            log.debug("[JWT] token invalid on {} {} : {}", req.getMethod(), uri, e.getMessage());
         }
+
         chain.doFilter(req, res);
     }
 }

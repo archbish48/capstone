@@ -7,6 +7,7 @@ import com.community.demo.domain.notice.Notification;
 import com.community.demo.domain.user.RoleType;
 import com.community.demo.domain.user.User;
 import com.community.demo.dto.notice.*;
+import com.community.demo.repository.BookmarkRepository;
 import com.community.demo.repository.NoticeRepository;
 import com.community.demo.repository.NotificationRepository;
 import com.community.demo.repository.UserRepository;
@@ -30,6 +31,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -39,6 +41,7 @@ public class NoticeService {
     private final NoticeRepository noticeRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final BookmarkRepository bookmarkRepository;
     private final FileStorageService fileStorageService;
     private final BookmarkService bookmarkService;
 
@@ -304,11 +307,25 @@ public class NoticeService {
 
         noticeRepository.save(notice);
 
-        // 대상 학과 학생에게 알림
-        List<User> targets = userRepository.findByDepartmentAndRoleType(dto.getDepartment(), RoleType.STUDENT);
+        // ===== 알림 대상 계산 =====
+        // 1) 대상 학과 소속 학생들
+        List<User> deptUsers = userRepository.findByDepartmentAndRoleType(dto.getDepartment(), RoleType.STUDENT);
 
-        // 1) 단건씩 notice 저장
-        targets.forEach(u -> notificationRepository.save(new Notification(u, notice)));
+        // 2) 공지 "작성자"를 북마크(=구독)한 사용자들
+        List<User> subscribers = bookmarkRepository.findSubscribersOfAuthor(user.getId());
+
+        // 3) 합집합 + 중복 제거 + (필요시) 작성자 본인 제외
+        Set<Long> seen = new HashSet<>();
+        List<Notification> notifications = new ArrayList<>();
+
+        Stream.concat(deptUsers.stream(), subscribers.stream())
+                .filter(u -> seen.add(u.getId()))                 // 중복 제거
+                // .filter(u -> !u.getId().equals(user.getId()))  // 작성자 본인에게 알림 보내지 않으려면 주석 해제
+                .forEach(u -> notifications.add(new Notification(u, notice)));
+
+        if (!notifications.isEmpty()) {
+            notificationRepository.saveAll(notifications);
+        }
 
         return toResponse(notice);
     }
@@ -408,10 +425,10 @@ public class NoticeService {
         // n.getImages() / n.getAttachments()의 url 에서 "/files/" 제거 → fileStorageService.resolve(논리경로)로 실제 Path 찾아 삭제
     }
 
-    @Transactional // 조회 후 업데이트까지 한 트랜잭션에서 처리
-    public Page<NotificationList> getMyUnreadPageAndMarkRead(User me, Pageable pageable, boolean markRead) {
-        // 1) 미읽음 알림 "현재 페이지" 조회 (최신순은 쿼리에서 고정)
-        Page<Notification> page = notificationRepository.findUnreadByReceiverPaged(me, pageable);
+    @Transactional(readOnly = true)
+    public Page<NotificationList> getMyNotifications(User me, Pageable pageable) {
+        // 1) 페이지 조회 (정렬은 메서드에서 고정: createdAt DESC)
+        Page<Notification> page = notificationRepository.findByReceiverOrderByCreatedAtDesc(me, pageable);
 
         // 2) DTO 매핑
         List<NotificationList> items = page.getContent().stream()
@@ -420,19 +437,31 @@ public class NoticeService {
                         n.getNotice().getId(),
                         n.getNotice().getTitle(),
                         n.getNotice().getDepartment(),
-                        n.isRead(),            // 여기서는 false일 것
+                        n.isRead(),
                         n.getCreatedAt()
                 ))
                 .toList();
 
-        // 3) 보여준 것만 읽음 처리
-        if (markRead && !items.isEmpty()) {
-            List<Long> ids = page.getContent().stream().map(Notification::getId).toList();
-            notificationRepository.markAsReadByIds(me, ids);
-        }
-
-        // 4) 같은 페이지 메타로 반환 (totalElements는 업데이트 전 기준)
+        // 3) 그대로 반환 (조회 전용: 상태 변경 없음)
         return new PageImpl<>(items, pageable, page.getTotalElements());
+    }
+
+    //  선택 알림 읽음 처리
+    @Transactional
+    public int markAsRead(User me, List<Long> ids) {
+        return notificationRepository.markAsReadByIds(me, ids);
+    }
+
+    //  선택 알림 삭제
+    @Transactional
+    public void deleteNotifications(User me, List<Long> ids) {
+        notificationRepository.deleteByReceiverAndIdIn(me, ids);
+    }
+
+    //  미읽음 개수 조회
+    @Transactional(readOnly = true)
+    public long getUnreadCount(User me) {
+        return notificationRepository.countByReceiverAndReadFalse(me);
     }
 
 
