@@ -3,6 +3,7 @@ package com.community.demo.config;
 
 import com.community.demo.jwt.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,10 +27,11 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity  // @PreAuthorize 활성화
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter jwtFilter;
+
+    private final JwtAuthenticationFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -66,7 +68,10 @@ public class SecurityConfig {
                         .requestMatchers("/enroll-timer/**").authenticated()
 
                         // (임시) 디버그: 매핑/보안 확인용
-                        .requestMatchers("/debug/**").permitAll()
+                        .requestMatchers("/debug/**").authenticated()
+
+                        // 챗봇 일단 임시 허가.
+                        .requestMatchers(HttpMethod.POST, "/chatbot/ask").authenticated()
 
 
                         // 그 외 모든 요청은 전부 인증 필요

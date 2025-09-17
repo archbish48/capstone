@@ -1,13 +1,14 @@
 package com.community.demo.config;
 
 
+import com.community.demo.controller.UserBusyBlockInterceptor;
 import com.community.demo.service.notice.FileStorageService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.*;
 
+
+// MVC 관련 설정
 @Configuration
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {    //정적 리소스 매핑 ( 파일을 브라우저에서 바로 볼 수 있게 하려면 필요함)
@@ -16,6 +17,7 @@ public class WebConfig implements WebMvcConfigurer {    //정적 리소스 매�
 //    private String uploadDir;
 
     private final FileStorageService storage;
+    private final UserBusyBlockInterceptor busyInterceptor;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
@@ -23,5 +25,11 @@ public class WebConfig implements WebMvcConfigurer {    //정적 리소스 매�
         registry.addResourceHandler("/files/**")
                 .addResourceLocations(location)
                 .setCachePeriod(3600);
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(busyInterceptor)
+                .addPathPatterns("/**");
     }
 }

@@ -29,6 +29,12 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security' //spring security
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+	// WebClient (reactive)
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	// Netty (Reactor Netty 기반 WebClient 사용 시 자동 포함)
+	implementation 'io.projectreactor.netty:reactor-netty:1.1.19'  // 버전은 스프링 부트 BOM 에 맞춰 자동 관리됨
+
 	// MySQL 추가
 	implementation 'com.mysql:mysql-connector-j:9.3.0'
 
@@ -44,6 +50,9 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+	// Hibernate 가 필요로 하는 로깅 의존성 (누락되어 있어서 추가)
+	implementation 'org.jboss.logging:jboss-logging:3.6.1.Final'
 }
 
 tasks.named('test') {
