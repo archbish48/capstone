@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 
@@ -28,10 +29,19 @@ public class MyPageService {
 
     // 유저의 이름, role, 학번,
     public MyBriefProfileResponse getMyBrief(Long userId) {
-        User user = userRepository.findById(userId)
+        User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
-        return MyBriefProfileResponse.from(user);
+        return MyBriefProfileResponse.from(u); // new 사용 안 함
     }
+
+    //절대경로로 바꾸기 위한 함수
+    private String toPublicUrlCompat(String stored) {
+        if (stored == null || stored.isBlank()) return null;
+        // 이미 "/files/"로 저장된 과거 데이터도 호환
+        if (stored.startsWith("/files/")) return stored;
+        return "/files/" + stored; // 표준 공개 URL로 변환
+    }
+
 
     // ===== 조회 (5단계 캡/앵커 로직 유지, profileImageUrl 포함) =====
     public Object getMyBasicInfo(Long userId) {
@@ -61,6 +71,9 @@ public class MyPageService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "부전공과 복수전공은 동시에 설정할 수 없습니다.");
         }
 
+        String img = toPublicUrlCompat(u.getProfileImageUrl()); //추가한 코드
+
+
         if (hasMinor) {
             return BasicInfoWithMinorResponse.builder()
                     .username(u.getUsername())
@@ -70,7 +83,7 @@ public class MyPageService {
                     .semester(result.semester())
                     .gradeLabel(result.label())
                     .minor(u.getMinorDepartment())
-                    .profileImageUrl(u.getProfileImageUrl())
+                    .profileImageUrl(img)
                     .build();
         }
         if (hasDouble) {
@@ -82,7 +95,7 @@ public class MyPageService {
                     .semester(result.semester())
                     .gradeLabel(result.label())
                     .doubleMajor(u.getDoubleMajorDepartment())
-                    .profileImageUrl(u.getProfileImageUrl())
+                    .profileImageUrl(img)
                     .build();
         }
         // 둘 다 없으면 부전공 포맷으로 null
@@ -94,7 +107,7 @@ public class MyPageService {
                 .semester(result.semester())
                 .gradeLabel(result.label())
                 .minor(null)
-                .profileImageUrl(u.getProfileImageUrl())
+                .profileImageUrl(img)
                 .build();
     }
 
@@ -139,9 +152,12 @@ public class MyPageService {
 
         // 4) 프로필 이미지 저장 (있을 때만)
         if (profileImage != null && !profileImage.isEmpty()) {
-            // 예: profiles/{userId}/ 파일명
             String storagePath = fileStorageService.save(profileImage, "profiles/" + u.getId());
-            u.setProfileImageUrl(storagePath); // 스토리지 상대경로 저장을 권장
+            // 혹시 "/files/"가 앞에 붙어 넘어오는 경우 제거
+            if (storagePath.startsWith("/files/")) {
+                storagePath = storagePath.substring("/files/".length());
+            }
+            u.setProfileImageUrl(storagePath);  // DB에는 "profiles/5/증명사진.jpg" 형태로 저장
         }
 
         userRepository.save(u);
