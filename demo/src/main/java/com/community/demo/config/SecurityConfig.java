@@ -76,9 +76,11 @@ public class SecurityConfig {
                         //credits 학점정보컨트롤러
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/credits/upload").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PUT,  "/credits").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/credits/flat").authenticated()
 
                         //마이페이지 컨트롤러 권한 설정 전부 인증 필요
-
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/mypage/**").authenticated()
 
 
 

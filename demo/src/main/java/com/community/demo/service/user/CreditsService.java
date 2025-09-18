@@ -1,6 +1,7 @@
 package com.community.demo.service.user;
 
 import com.community.demo.domain.user.User;
+import com.community.demo.dto.user.CreditsFlatRequest;
 import com.community.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -133,6 +134,49 @@ public class CreditsService {
         userRepository.save(me);
     }
 
+    @Transactional
+    public void applyFlatPayload(User me, CreditsFlatRequest req) {
+        // 공통(취득학점)
+        if (req.getGeneralRequired() != null)   me.setCreditsGeneralRequired(req.getGeneralRequired());
+        if (req.getBasicMajor() != null)        me.setCreditsBasicMajor(req.getBasicMajor());
+        if (req.getMajor() != null)             me.setCreditsMajor(req.getMajor());              // 전공
+        if (req.getTotal() != null)             me.setCreditsTotal(req.getTotal());
+
+        BigDecimal gpa = req.getGpa();
+        if (gpa != null)                        me.setGpa(gpa);
+
+        // 부/복 분기 저장
+        Track track = detectTrack(me.getMinorDepartment(), me.getDoubleMajorDepartment());
+        switch (track) {
+            case NONE -> {
+                me.setCreditsMinorBasicMajor(null);
+                me.setCreditsMinorMinimumRequired(null);
+                me.setCreditsDoubleBasicMajor(null);
+                me.setCreditsDoubleMinimumRequired(null);
+            }
+            case MINOR -> {
+                if (req.getSubOrDoubleMajor() != null)
+                    me.setCreditsMinorMinimumRequired(req.getSubOrDoubleMajor());
+                if (req.getSubOrDoubleBasicMajor() != null)
+                    me.setCreditsMinorBasicMajor(req.getSubOrDoubleBasicMajor());
+                // 반대편 비움
+                me.setCreditsDoubleBasicMajor(null);
+                me.setCreditsDoubleMinimumRequired(null);
+            }
+            case DOUBLE -> {
+                if (req.getSubOrDoubleMajor() != null)
+                    me.setCreditsDoubleMinimumRequired(req.getSubOrDoubleMajor());
+                if (req.getSubOrDoubleBasicMajor() != null)
+                    me.setCreditsDoubleBasicMajor(req.getSubOrDoubleBasicMajor());
+                // 반대편 비움
+                me.setCreditsMinorBasicMajor(null);
+                me.setCreditsMinorMinimumRequired(null);
+            }
+        }
+
+        userRepository.save(me);
+    }
+
     /* ========== 내부 유틸/핵심 로직 ========== */
 
     private Map<String, Object> callOcr(MultipartFile pdf) {
@@ -221,6 +265,7 @@ public class CreditsService {
         log.warn("[CREDITS] Both minor and double major are set. Falling back to DOUBLE.");
         return Track.DOUBLE;
     }
+
 
     private String norm(String s) {
         if (s == null) return null;

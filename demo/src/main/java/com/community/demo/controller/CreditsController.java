@@ -1,6 +1,7 @@
 package com.community.demo.controller;
 
 import com.community.demo.domain.user.User;
+import com.community.demo.dto.user.CreditsFlatRequest;
 import com.community.demo.service.user.CreditsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -40,6 +41,13 @@ public class CreditsController {    //마이페이지 학점 정보 파일 업�
     ) {
         User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         creditsService.applyEditedPayload(me, editedPayload);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/flat")
+    public ResponseEntity<Void> updateFlat(@RequestBody CreditsFlatRequest req) {
+        User me = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        creditsService.applyFlatPayload(me, req);
         return ResponseEntity.noContent().build();
     }
 }
