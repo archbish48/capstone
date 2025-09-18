@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.LocalDate;
 
@@ -48,6 +49,7 @@ public class MyPageService {
         if (stored.startsWith("/files/")) return stored;
         return "/files/" + stored; // 표준 공개 URL로 변환
     }
+
 
 
     // ===== 조회 (5단계 캡/앵커 로직 유지, profileImageUrl 포함) =====
