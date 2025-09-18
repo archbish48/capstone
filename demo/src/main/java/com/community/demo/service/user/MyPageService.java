@@ -34,6 +34,13 @@ public class MyPageService {
         return MyBriefProfileResponse.from(u); // new 사용 안 함
     }
 
+    // 유저의 전공, 기초전공, 교양필수, 총이수학점, 학점평점 조회
+    public CreditInfoResponse getMyCredits(Long userId) {
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        return CreditInfoResponse.from(u);
+    }
+
     //절대경로로 바꾸기 위한 함수
     private String toPublicUrlCompat(String stored) {
         if (stored == null || stored.isBlank()) return null;

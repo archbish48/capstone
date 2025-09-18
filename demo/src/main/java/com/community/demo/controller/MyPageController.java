@@ -1,6 +1,7 @@
 package com.community.demo.controller;
 
 import com.community.demo.domain.user.User;
+import com.community.demo.dto.user.CreditInfoResponse;
 import com.community.demo.dto.user.MyBriefProfileResponse;
 import com.community.demo.dto.user.MyProfileResponse;
 import com.community.demo.dto.user.UpdateMyInfoRequest;
@@ -48,6 +49,13 @@ public class MyPageController {
     public Object getMyInfo() {
         User me = getCurrentUserOrThrow();
         return myPageService.getMyBasicInfo(me.getId());
+    }
+
+    // 학점정보 조회: 전공, 기초전공, 교양필수, 총이수학점, 학점평점
+    @GetMapping("/credits")
+    public CreditInfoResponse getMyCredits() {
+        User me = getCurrentUserOrThrow();
+        return myPageService.getMyCredits(me.getId());
     }
 
 

@@ -67,11 +67,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/enroll-timer/stats/average").permitAll()
                         .requestMatchers("/enroll-timer/**").authenticated()
 
-                        // (임시) 디버그: 매핑/보안 확인용
+                        // (임시) 디버그: 매핑/보안 확인용(인증필요)
                         .requestMatchers("/debug/**").authenticated()
 
-                        // 챗봇 일단 임시 허가.
+                        // 챗봇 인증 필요
                         .requestMatchers(HttpMethod.POST, "/chatbot/ask").authenticated()
+
+                        //마이페이지의 학점정보컨트롤러
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/credits/upload").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT,  "/credits").authenticated()
 
 
                         // 그 외 모든 요청은 전부 인증 필요
