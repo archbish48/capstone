@@ -43,10 +43,51 @@ public class CreditsService {
      */
     @Transactional
     public Map<String, Object> forwardToOcrAndSave(User me, MultipartFile pdf) {
-        Map<String, Object> raw = callOcr(pdf);                 // FastAPI 원본 응답
-        Map<String, Object> transformed = transformKeys(me, raw); // 키명 변경 + 학점평점 추가
-        persistCoreFields(me, transformed);                     // DB 반영
-        return transformed;
+        Map<String, Object> raw = callOcr(pdf);
+
+        // 트랙 규칙(부/복 이름 치환/제거)은 그대로 적용
+        Map<String, Object> transformed = transformKeys(me, raw);
+
+        // DB 저장: 이수기준 + 취득학점 모두 저장 (이미 구현해둔 메서드)
+        persistCoreFields(me, transformed);
+
+        // 🔴 응답은 '취득학점만' 담아 단일 레벨 JSON으로 구성해서 반환
+        return buildAcquiredOnlyResponse(me, transformed);
+    }
+
+    // 취득학점만 단일 레벨 JSON 으로 구성
+    private Map<String, Object> buildAcquiredOnlyResponse(User me, Map<String, Object> transformed) {
+        Map<String, Object> out = new LinkedHashMap<>();
+
+        // 기본 항목들(취득학점만)
+        putIfNotNull(out, "교양 필수", getNestedInt(transformed, "교양 필수", "취득학점"));
+        putIfNotNull(out, "기초전공", getNestedInt(transformed, "기초전공", "취득학점"));
+        putIfNotNull(out, "단일전공자 최소전공이수학점", getNestedInt(transformed, "단일전공자 최소전공이수학점", "취득학점"));
+
+        // 부/복 전공 트랙에 따른 항목(없으면 제거)
+        Track track = detectTrack(me.getMinorDepartment(), me.getDoubleMajorDepartment());
+        if (track == Track.MINOR) {
+            putIfNotNull(out, "부전공 기초전공", getNestedInt(transformed, "부전공 기초전공", "취득학점"));
+            putIfNotNull(out, "부전공 최소전공이수학점", getNestedInt(transformed, "부전공 최소전공이수학점", "취득학점"));
+        } else if (track == Track.DOUBLE) {
+            putIfNotNull(out, "복수전공 기초전공", getNestedInt(transformed, "복수전공 기초전공", "취득학점"));
+            putIfNotNull(out, "복수전공 최소전공이수학점", getNestedInt(transformed, "복수전공 최소전공이수학점", "취득학점"));
+        }
+        // track == NONE 이면 부/복 관련 키 아예 미포함
+
+        // Top-level 값들 그대로
+        putIfNotNull(out, "졸업학점", getTopLevelInt(transformed, "졸업학점"));
+        putIfNotNull(out, "취득학점", getTopLevelInt(transformed, "취득학점"));
+        putIfNotNull(out, "편입인정학점", getTopLevelInt(transformed, "편입인정학점"));
+
+        // 항상 포함(요구: null로 내려보내기)
+        out.put("학점평점", null);
+
+        return out;
+    }
+
+    private void putIfNotNull(Map<String, Object> map, String key, Integer val) {
+        if (val != null) map.put(key, val);
     }
 
     /**
