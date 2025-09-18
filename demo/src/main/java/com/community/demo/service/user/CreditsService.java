@@ -54,19 +54,79 @@ public class CreditsService {
      */
     @Transactional
     public void applyEditedPayload(User me, Map<String, Object> edited) {
-        Integer gReq  = getNestedInt(edited, "교양 필수", "취득학점");
-        if (gReq != null) me.setCreditsGeneralRequired(gReq);
+        // === 취득학점 ===
+        Integer acqGeneral = getNestedInt(edited, "교양 필수", "취득학점");
+        Integer acqBasic   = getNestedInt(edited, "기초전공", "취득학점");
+        Integer acqMajor   = getNestedInt(edited, "단일전공자 최소전공이수학점", "취득학점");
+        Integer acqTotal   = getTopLevelInt(edited, "취득학점");
+        Integer transfer   = getTopLevelInt(edited, "편입인정학점");
 
-        Integer basic = getNestedInt(edited, "기초전공", "취득학점");
-        if (basic != null) me.setCreditsBasicMajor(basic);
+        if (acqGeneral != null) me.setCreditsGeneralRequired(acqGeneral);
+        if (acqBasic   != null) me.setCreditsBasicMajor(acqBasic);
+        if (acqMajor   != null) me.setCreditsMajor(acqMajor);
+        if (acqTotal   != null) me.setCreditsTotal(acqTotal);
+        if (transfer   != null) me.setTransferRecognized(transfer);
 
-        Integer total = getTopLevelInt(edited, "취득학점");
-        if (total != null) me.setCreditsTotal(total);
+        // === 이수기준 ===
+        Integer reqGeneral = getNestedInt(edited, "교양 필수", "이수기준");
+        Integer reqBasic   = getNestedInt(edited, "기초전공", "이수기준");
+        Integer reqMajor   = getNestedInt(edited, "단일전공자 최소전공이수학점", "이수기준");
+        Integer reqGrad    = getTopLevelInt(edited, "졸업학점");
 
-        // [ADD] majorCredits 매핑
-        Integer major = getNestedInt(edited, "단일전공자 최소전공이수학점", "취득학점");
-        if (major != null) me.setCreditsMajor(major);
+        if (reqGeneral != null) me.setReqGeneralRequired(reqGeneral);
+        if (reqBasic   != null) me.setReqBasicMajor(reqBasic);
+        if (reqMajor   != null) me.setReqSingleMajorMinimumRequired(reqMajor);
+        if (reqGrad    != null) me.setReqGraduationTotal(reqGrad);
 
+        // === 부/복수전공 분기 ===
+        Track track = detectTrack(me.getMinorDepartment(), me.getDoubleMajorDepartment());
+        switch (track) {
+            case NONE -> {
+                me.setCreditsMinorBasicMajor(null);
+                me.setCreditsMinorMinimumRequired(null);
+                me.setCreditsDoubleBasicMajor(null);
+                me.setCreditsDoubleMinimumRequired(null);
+
+                me.setReqMinorBasicMajor(null);
+                me.setReqMinorMinimumRequired(null);
+                me.setReqDoubleBasicMajor(null);
+                me.setReqDoubleMinimumRequired(null);
+            }
+            case MINOR -> {
+                Integer acqMinorBasic = getNestedInt(edited, "부전공 기초전공", "취득학점");
+                Integer acqMinorMin   = getNestedInt(edited, "부전공 최소전공이수학점", "취득학점");
+                if (acqMinorBasic != null) me.setCreditsMinorBasicMajor(acqMinorBasic);
+                if (acqMinorMin   != null) me.setCreditsMinorMinimumRequired(acqMinorMin);
+
+                Integer reqMinorBasic = getNestedInt(edited, "부전공 기초전공", "이수기준");
+                Integer reqMinorMin   = getNestedInt(edited, "부전공 최소전공이수학점", "이수기준");
+                if (reqMinorBasic != null) me.setReqMinorBasicMajor(reqMinorBasic);
+                if (reqMinorMin   != null) me.setReqMinorMinimumRequired(reqMinorMin);
+
+                me.setCreditsDoubleBasicMajor(null);
+                me.setCreditsDoubleMinimumRequired(null);
+                me.setReqDoubleBasicMajor(null);
+                me.setReqDoubleMinimumRequired(null);
+            }
+            case DOUBLE -> {
+                Integer acqDblBasic = getNestedInt(edited, "복수전공 기초전공", "취득학점");
+                Integer acqDblMin   = getNestedInt(edited, "복수전공 최소전공이수학점", "취득학점");
+                if (acqDblBasic != null) me.setCreditsDoubleBasicMajor(acqDblBasic);
+                if (acqDblMin   != null) me.setCreditsDoubleMinimumRequired(acqDblMin);
+
+                Integer reqDblBasic = getNestedInt(edited, "복수전공 기초전공", "이수기준");
+                Integer reqDblMin   = getNestedInt(edited, "복수전공 최소전공이수학점", "이수기준");
+                if (reqDblBasic != null) me.setReqDoubleBasicMajor(reqDblBasic);
+                if (reqDblMin   != null) me.setReqDoubleMinimumRequired(reqDblMin);
+
+                me.setCreditsMinorBasicMajor(null);
+                me.setCreditsMinorMinimumRequired(null);
+                me.setReqMinorBasicMajor(null);
+                me.setReqMinorMinimumRequired(null);
+            }
+        }
+
+        // GPA
         BigDecimal gpa = getTopLevelBigDecimal(edited, "학점평점");
         if (gpa != null) me.setGpa(gpa);
 
@@ -193,19 +253,80 @@ public class CreditsService {
 
     /** 업로드 응답 직후 DB에 반영할 핵심 필드 저장 */
     private void persistCoreFields(User me, Map<String, Object> transformed) {
-        Integer gReq  = getNestedInt(transformed, "교양 필수", "취득학점");
-        Integer basic = getNestedInt(transformed, "기초전공", "취득학점");
-        Integer total = getTopLevelInt(transformed, "취득학점");
+        // === 공통(취득학점) ===
+        Integer acqGeneral = getNestedInt(transformed, "교양 필수", "취득학점");
+        Integer acqBasic   = getNestedInt(transformed, "기초전공", "취득학점");
+        Integer acqMajor   = getNestedInt(transformed, "단일전공자 최소전공이수학점", "취득학점"); // majorCredits
+        Integer acqTotal   = getTopLevelInt(transformed, "취득학점");
+        Integer transfer   = getTopLevelInt(transformed, "편입인정학점");
 
-        // [ADD] 전공 이수학점 = "단일전공자 최소전공이수학점"의 "취득학점"
-        Integer major = getNestedInt(transformed, "단일전공자 최소전공이수학점", "취득학점");
+        if (acqGeneral != null) me.setCreditsGeneralRequired(acqGeneral);
+        if (acqBasic   != null) me.setCreditsBasicMajor(acqBasic);
+        if (acqMajor   != null) me.setCreditsMajor(acqMajor);
+        if (acqTotal   != null) me.setCreditsTotal(acqTotal);
+        if (transfer   != null) me.setTransferRecognized(transfer);
 
-        if (gReq != null)  me.setCreditsGeneralRequired(gReq);
-        if (basic != null) me.setCreditsBasicMajor(basic);
-        if (total != null) me.setCreditsTotal(total);
+        // === 공통(이수기준) ===
+        Integer reqGeneral = getNestedInt(transformed, "교양 필수", "이수기준");
+        Integer reqBasic   = getNestedInt(transformed, "기초전공", "이수기준");
+        Integer reqMajor   = getNestedInt(transformed, "단일전공자 최소전공이수학점", "이수기준");
+        Integer reqGrad    = getTopLevelInt(transformed, "졸업학점");
 
-        // [ADD]
-        if (major != null) me.setCreditsMajor(major);
+        if (reqGeneral != null) me.setReqGeneralRequired(reqGeneral);
+        if (reqBasic   != null) me.setReqBasicMajor(reqBasic);
+        if (reqMajor   != null) me.setReqSingleMajorMinimumRequired(reqMajor);
+        if (reqGrad    != null) me.setReqGraduationTotal(reqGrad);
+
+        // === 부/복수전공 분기 ===
+        Track track = detectTrack(me.getMinorDepartment(), me.getDoubleMajorDepartment());
+        switch (track) {
+            case NONE -> {
+                // 취득/이수기준 모두 비움
+                me.setCreditsMinorBasicMajor(null);
+                me.setCreditsMinorMinimumRequired(null);
+                me.setCreditsDoubleBasicMajor(null);
+                me.setCreditsDoubleMinimumRequired(null);
+
+                me.setReqMinorBasicMajor(null);
+                me.setReqMinorMinimumRequired(null);
+                me.setReqDoubleBasicMajor(null);
+                me.setReqDoubleMinimumRequired(null);
+            }
+            case MINOR -> {
+                Integer acqMinorBasic = getNestedInt(transformed, "부전공 기초전공", "취득학점");
+                Integer acqMinorMin   = getNestedInt(transformed, "부전공 최소전공이수학점", "취득학점");
+                if (acqMinorBasic != null) me.setCreditsMinorBasicMajor(acqMinorBasic);
+                if (acqMinorMin   != null) me.setCreditsMinorMinimumRequired(acqMinorMin);
+
+                Integer reqMinorBasic = getNestedInt(transformed, "부전공 기초전공", "이수기준");
+                Integer reqMinorMin   = getNestedInt(transformed, "부전공 최소전공이수학점", "이수기준");
+                if (reqMinorBasic != null) me.setReqMinorBasicMajor(reqMinorBasic);
+                if (reqMinorMin   != null) me.setReqMinorMinimumRequired(reqMinorMin);
+
+                // 반대편 비움
+                me.setCreditsDoubleBasicMajor(null);
+                me.setCreditsDoubleMinimumRequired(null);
+                me.setReqDoubleBasicMajor(null);
+                me.setReqDoubleMinimumRequired(null);
+            }
+            case DOUBLE -> {
+                Integer acqDblBasic = getNestedInt(transformed, "복수전공 기초전공", "취득학점");
+                Integer acqDblMin   = getNestedInt(transformed, "복수전공 최소전공이수학점", "취득학점");
+                if (acqDblBasic != null) me.setCreditsDoubleBasicMajor(acqDblBasic);
+                if (acqDblMin   != null) me.setCreditsDoubleMinimumRequired(acqDblMin);
+
+                Integer reqDblBasic = getNestedInt(transformed, "복수전공 기초전공", "이수기준");
+                Integer reqDblMin   = getNestedInt(transformed, "복수전공 최소전공이수학점", "이수기준");
+                if (reqDblBasic != null) me.setReqDoubleBasicMajor(reqDblBasic);
+                if (reqDblMin   != null) me.setReqDoubleMinimumRequired(reqDblMin);
+
+                // 반대편 비움
+                me.setCreditsMinorBasicMajor(null);
+                me.setCreditsMinorMinimumRequired(null);
+                me.setReqMinorBasicMajor(null);
+                me.setReqMinorMinimumRequired(null);
+            }
+        }
 
         userRepository.save(me);
     }

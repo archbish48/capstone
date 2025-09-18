@@ -77,12 +77,60 @@ public class User {
     @Column(name = "credits_general_required")
     private Integer creditsGeneralRequired = 0; // 교양필수 이수학점
 
+    //  추가: 부전공/복수전공 이수학점 (둘 중 하나만 사용)
+    @Column(name = "credits_minor")
+    private Integer creditsMinor = 0;                 // 부전공 이수학점
+
+    @Column(name = "credits_double_major")
+    private Integer creditsDoubleMajor = 0;           // 복수전공 이수학점
+
+    @Column(name = "credits_minor_basic_major")
+    private Integer creditsMinorBasicMajor;          // "부전공 기초전공" 취득학점
+
+    @Column(name = "credits_minor_min_required")
+    private Integer creditsMinorMinimumRequired;     // "부전공 최소전공이수학점" 취득학점
+
+    @Column(name = "credits_double_basic_major")
+    private Integer creditsDoubleBasicMajor;         // "복수전공 기초전공" 취득학점
+
+    @Column(name = "credits_double_min_required")
+    private Integer creditsDoubleMinimumRequired;    // "복수전공 최소전공이수학점" 취득학점
+
     @Column(name = "credits_total")
     private Integer creditsTotal = 0;           // 총 이수학점 (없으면 서비스에서 합산해도 됨)
 
     @Column(name = "gpa", precision = 3, scale = 2)
     private java.math.BigDecimal gpa;           // 학점평점 (예: 3.85)
     // =================================
+
+    // ====== 이수기준(신규) ======
+    @Column(name = "req_general_required")
+    private Integer reqGeneralRequired;           // 교양 필수 "이수기준"
+
+    @Column(name = "req_basic_major")
+    private Integer reqBasicMajor;                // 기초전공 "이수기준"
+
+    @Column(name = "req_single_major_min_required")
+    private Integer reqSingleMajorMinimumRequired; // 단일전공자 최소전공이수학점 "이수기준"
+
+    @Column(name = "req_minor_basic_major")
+    private Integer reqMinorBasicMajor;           // 부전공 기초전공 "이수기준"
+
+    @Column(name = "req_minor_min_required")
+    private Integer reqMinorMinimumRequired;      // 부전공 최소전공이수학점 "이수기준"
+
+    @Column(name = "req_double_basic_major")
+    private Integer reqDoubleBasicMajor;          // 복수전공 기초전공 "이수기준"
+
+    @Column(name = "req_double_min_required")
+    private Integer reqDoubleMinimumRequired;     // 복수전공 최소전공이수학점 "이수기준"
+
+    // ====== 기타 Top-level ======
+    @Column(name = "req_graduation_total")
+    private Integer reqGraduationTotal;           // 졸업학점 (이 항목은 "이수기준" 성격이라 req로 둡니다)
+
+    @Column(name = "transfer_recognized")
+    private Integer transferRecognized;           // 편입인정학점 (Top-level 숫자)
 
     // 기존 필드 (예: 최근 측정 캐시) 생략 없이 유지
     @ElementCollection(fetch = FetchType.EAGER)

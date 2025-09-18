@@ -73,9 +73,13 @@ public class SecurityConfig {
                         // 챗봇 인증 필요
                         .requestMatchers(HttpMethod.POST, "/chatbot/ask").authenticated()
 
-                        //마이페이지의 학점정보컨트롤러
+                        //credits 학점정보컨트롤러
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/credits/upload").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.PUT,  "/credits").authenticated()
+
+                        //마이페이지 컨트롤러 권한 설정 전부 인증 필요
+
+
 
 
                         // 그 외 모든 요청은 전부 인증 필요

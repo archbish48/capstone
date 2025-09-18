@@ -39,8 +39,68 @@ public class MyPageService {
     public CreditInfoResponse getMyCredits(Long userId) {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
-        return CreditInfoResponse.from(u);
+
+        // 부전공/복수전공 보유 여부 판단(학과명 또는 학점/기준 중 하나라도 있으면 포함)
+        boolean hasMinor =
+                hasText(u.getMinorDepartment())
+                        || nz(u.getCreditsMinor()) > 0
+                        || nz(u.getCreditsMinorBasicMajor()) > 0
+                        || nz(u.getCreditsMinorMinimumRequired()) > 0
+                        || u.getReqMinorBasicMajor() != null
+                        || u.getReqMinorMinimumRequired() != null;
+
+        boolean hasDouble =
+                hasText(u.getDoubleMajorDepartment())
+                        || nz(u.getCreditsDoubleMajor()) > 0
+                        || nz(u.getCreditsDoubleBasicMajor()) > 0
+                        || nz(u.getCreditsDoubleMinimumRequired()) > 0
+                        || u.getReqDoubleBasicMajor() != null
+                        || u.getReqDoubleMinimumRequired() != null;
+
+        // 둘 다 채워지는 설계 위반 방지(원하면 유지/삭제)
+        if (hasMinor && hasDouble) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "부전공과 복수전공 항목은 동시에 설정할 수 없습니다.");
+        }
+
+        CreditInfoResponse.CreditInfoResponseBuilder b = CreditInfoResponse.builder()
+                // 취득학점(기본)
+                .majorCredits(nz(u.getCreditsMajor()))
+                .basicMajorCredits(nz(u.getCreditsBasicMajor()))
+                .generalRequiredCredits(nz(u.getCreditsGeneralRequired()))
+                .totalCredits(nz(u.getCreditsTotal()))
+                .gpa(u.getGpa())
+                // 이수기준(기본)
+                .requiredGeneralRequiredCredits(u.getReqGeneralRequired())
+                .requiredBasicMajorCredits(u.getReqBasicMajor())
+                .requiredSingleMajorMinimumCredits(u.getReqSingleMajorMinimumRequired())
+                .requiredGraduationTotal(u.getReqGraduationTotal())
+                .transferRecognized(u.getTransferRecognized());
+
+        if (hasMinor) {
+            b.minorCredits(nullIfZero(u.getCreditsMinor()))
+                    .minorBasicMajorCredits(nullIfZero(u.getCreditsMinorBasicMajor()))
+                    .minorMinimumRequiredCredits(nullIfZero(u.getCreditsMinorMinimumRequired()))
+                    .requiredMinorBasicMajorCredits(u.getReqMinorBasicMajor())
+                    .requiredMinorMinimumRequiredCredits(u.getReqMinorMinimumRequired());
+        }
+
+        if (hasDouble) {
+            b.doubleMajorCredits(nullIfZero(u.getCreditsDoubleMajor()))
+                    .doubleBasicMajorCredits(nullIfZero(u.getCreditsDoubleBasicMajor()))
+                    .doubleMinimumRequiredCredits(nullIfZero(u.getCreditsDoubleMinimumRequired()))
+                    .requiredDoubleBasicMajorCredits(u.getReqDoubleBasicMajor())
+                    .requiredDoubleMinimumRequiredCredits(u.getReqDoubleMinimumRequired());
+        }
+
+        return b.build();
     }
+
+    private static int nz(Integer v) { return v == null ? 0 : v; }
+    private static Integer nullIfZero(Integer v) {
+        if (v == null) return null;
+        return v == 0 ? null : v;
+    }
+    private static boolean hasText(String s) { return s != null && !s.isBlank(); }
 
     //절대경로로 바꾸기 위한 함수
     private String toPublicUrlCompat(String stored) {
