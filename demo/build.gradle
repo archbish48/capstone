@@ -32,6 +32,9 @@ dependencies {
 	// WebClient (reactive)
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
+	//Validator
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
 	// Netty (Reactor Netty 기반 WebClient 사용 시 자동 포함)
 	implementation 'io.projectreactor.netty:reactor-netty:1.1.19'  // 버전은 스프링 부트 BOM 에 맞춰 자동 관리됨
 
