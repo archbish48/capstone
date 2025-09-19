@@ -1,15 +1,15 @@
 package com.community.demo.dto.chat;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.*;
 
 
-@Data
-@AllArgsConstructor
+@Getter @Setter @NoArgsConstructor
 public class ChatRequest {
-    @NotBlank
+    @NotBlank(message = "question must not be blank")
+    @JsonProperty("question")
+    @JsonAlias({"content", "text", "q", "message"})
     private String question;
-    //private String collectionName; // 현재 FastAPI 는 사용 안 함
-
 }

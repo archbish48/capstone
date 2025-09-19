@@ -72,6 +72,7 @@ public class SecurityConfig {
 
                         // 챗봇 인증 필요
                         .requestMatchers(HttpMethod.POST, "/chatbot/ask").authenticated()
+                        .requestMatchers(HttpMethod.GET,  "/chatbot/history/**").authenticated()
 
                         //credits 학점정보컨트롤러
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/credits/upload").authenticated()
