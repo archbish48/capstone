@@ -83,6 +83,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/mypage/**").authenticated()
 
+                        //FAQ 권한 규칙 모든 유저가 쓸 수 있음
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/inquiries").hasAnyRole("STUDENT","STAFF","MANAGER","ADMIN")
+
+                        
+                        //관리자 페이지 관리자만 접근 가능
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
 
 
                         // 그 외 모든 요청은 전부 인증 필요
