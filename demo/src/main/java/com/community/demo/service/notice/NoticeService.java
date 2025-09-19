@@ -116,14 +116,12 @@ public class NoticeService {
     //  상세 조회 - 공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부 + (내 알림 자동 읽음)
     @Transactional
     public NoticeResponse getNoticeDetail(Long noticeId, User user) {
-        // 1) 공지 + 관련 리소스 로딩
+        // 1) 공지 로딩
         Notice notice = noticeRepository.findByIdWithDetails(noticeId)
                 .orElseThrow(() -> new NoSuchElementException("공지사항을 찾을 수 없습니다."));
 
-        // 2) 내 알림 "삭제" 처리 (없으면 0건)
-        notificationRepository.deleteByReceiverAndNotice(user, noticeId);
-        // 또는 파생 쿼리 사용 시:
-        // notificationRepository.deleteByReceiverAndNotice_Id(user, noticeId);
+        // 2) (변경점) 내 알림 '읽음 처리'로 복귀
+        notificationRepository.markAsReadByReceiverAndNotice(user, noticeId);
 
         // 3) DTO 구성
         List<FileItemResponse> imageItems = notice.getImages().stream()

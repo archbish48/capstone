@@ -45,6 +45,17 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     """)
     Page<Notification> findByReceiverOrderUnreadFirst(@Param("receiver") User receiver, Pageable pageable);
 
+    @Modifying
+    @Query("""
+        update Notification n
+           set n.read = true
+         where n.receiver = :receiver
+           and n.notice.id = :noticeId
+           and n.read = false
+    """)
+    int markAsReadByReceiverAndNotice(@Param("receiver") User receiver,
+                                      @Param("noticeId") Long noticeId);
+
 
 
     
