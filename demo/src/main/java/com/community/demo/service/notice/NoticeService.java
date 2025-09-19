@@ -113,13 +113,19 @@ public class NoticeService {
         });
     }
 
-    //  상세 조회 - 공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부
-    @Transactional(readOnly = true)
+    //  상세 조회 - 공지사항 id, 제목, 내용, 작성자 이름, 작성자 역할, 날짜, 이미지, 첨부파일, 북마크 여부 + (내 알림 자동 읽음)
+    @Transactional
     public NoticeResponse getNoticeDetail(Long noticeId, User user) {
-        // (선택) N+1 줄이려면 @EntityGraph 로 images/attachments/author 를 함께 로딩하는 메서드로 교체
+        // 1) 공지 + 관련 리소스 로딩
         Notice notice = noticeRepository.findByIdWithDetails(noticeId)
                 .orElseThrow(() -> new NoSuchElementException("공지사항을 찾을 수 없습니다."));
 
+        // 2) 내 알림 "삭제" 처리 (없으면 0건)
+        notificationRepository.deleteByReceiverAndNotice(user, noticeId);
+        // 또는 파생 쿼리 사용 시:
+        // notificationRepository.deleteByReceiverAndNotice_Id(user, noticeId);
+
+        // 3) DTO 구성
         List<FileItemResponse> imageItems = notice.getImages().stream()
                 .map(img -> new FileItemResponse(img.getId(), img.getImageUrl()))
                 .toList();
@@ -138,8 +144,8 @@ public class NoticeService {
                 notice.getDepartment(),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt(),
-                imageItems,            // ← id+url
-                attachmentItems,       // ← id+url
+                imageItems,
+                attachmentItems,
                 isBookmarked
         );
     }
@@ -427,10 +433,9 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public Page<NotificationList> getMyNotifications(User me, Pageable pageable) {
-        // 1) 페이지 조회 (정렬은 메서드에서 고정: createdAt DESC)
-        Page<Notification> page = notificationRepository.findByReceiverOrderByCreatedAtDesc(me, pageable);
+        Page<Notification> page =
+                notificationRepository.findByReceiverOrderUnreadFirst(me, pageable);
 
-        // 2) DTO 매핑
         List<NotificationList> items = page.getContent().stream()
                 .map(n -> new NotificationList(
                         n.getId(),
@@ -442,7 +447,6 @@ public class NoticeService {
                 ))
                 .toList();
 
-        // 3) 그대로 반환 (조회 전용: 상태 변경 없음)
         return new PageImpl<>(items, pageable, page.getTotalElements());
     }
 

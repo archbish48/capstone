@@ -6,6 +6,7 @@ import com.community.demo.dto.user.MyBriefProfileResponse;
 import com.community.demo.dto.user.MyProfileResponse;
 import com.community.demo.dto.user.UpdateMyInfoRequest;
 import com.community.demo.service.user.MyPageService;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -62,18 +63,36 @@ public class MyPageController {
     // 내 정보 수정 (이름, 학과, 학번, "x학년 x학기", 부전공/복수전공, 프로필 이미지)
     @PatchMapping(value = "/info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Object updateMyInfo(
-            @RequestPart("payload") String payloadJson,                 // JSON 문자열
+            @RequestPart("payload") String payloadJson,
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) {
-        UpdateMyInfoRequest payload;
+        User me = getCurrentUserOrThrow();
         try {
-            payload = objectMapper.readValue(payloadJson, UpdateMyInfoRequest.class);
+            JsonNode root = objectMapper.readTree(payloadJson);
+
+            // 키 존재 여부
+            boolean minorPresent       = root.has("minor");
+            boolean doubleMajorPresent = root.has("doubleMajor");
+
+            // "explicit null" 여부 (키가 있고 값이 null 일 때만 true)
+            boolean minorExplicitNull       = minorPresent && root.get("minor").isNull();
+            boolean doubleMajorExplicitNull = doubleMajorPresent && root.get("doubleMajor").isNull();
+
+            // 기존 DTO 매핑
+            UpdateMyInfoRequest payload = objectMapper.treeToValue(root, UpdateMyInfoRequest.class);
+
+            return myPageService.updateMyInfo(
+                    me.getId(),
+                    payload,
+                    profileImage,
+                    minorPresent, doubleMajorPresent,
+                    minorExplicitNull, doubleMajorExplicitNull
+            );
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "payload JSON 파싱 실패: " + e.getMessage());
         }
-        User me = getCurrentUserOrThrow();
-        return myPageService.updateMyInfo(me.getId(), payload, profileImage); // profileImage가 null이면 이미지 미변경
     }
+
 
 
 

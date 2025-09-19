@@ -181,58 +181,63 @@ public class MyPageService {
     }
 
     // ===== 수정 =====
-    public Object updateMyInfo(Long userId, UpdateMyInfoRequest req, MultipartFile profileImage) {
+    public Object updateMyInfo(Long userId,
+                               UpdateMyInfoRequest req,
+                               MultipartFile profileImage,
+                               boolean minorPresent, boolean doubleMajorPresent,
+                               boolean minorExplicitNull, boolean doubleMajorExplicitNull) {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        // 1) 기본 문자열 필드 업데이트 (null이면 기존 유지, 빈문자면 비우기)
-        if (req.getUsername() != null)        u.setUsername(blankToNull(req.getUsername()));
-        if (req.getDepartment() != null)      u.setDepartment(blankToNull(req.getDepartment()));
-        if (req.getStudentNumber() != null)   u.setStudent_number(blankToNull(req.getStudentNumber()));
+        // (생략) 이름/학과/학번/gradeLabel → 앵커 갱신 로직은 기존 그대로
 
-        // 2) 학년 라벨 → 앵커 갱신 (요청이 왔을 때만)
-        if (StringUtils.hasText(req.getGradeLabel())) {
-            int[] parsed = GradeSemesterParser.parseLabel(req.getGradeLabel()); // [grade, semester]
-            int gy = clampGrade(parsed[0]);
-            int sem = clampSemester(parsed[1]);
-            u.setProgressAnchorGradeYear(gy);
-            u.setProgressAnchorSemester(sem);
-            u.setProgressAnchorDate(AcademicTermCalculator.nowSeoul()); // 지금을 앵커로
+        // --- 부전공/복수전공 업데이트 ---
+        // 규칙:
+        //  - 키가 없으면 아무 것도 하지 않음(유지)
+        //  - 키가 있고 값이 null이면 해당 필드만 null로 초기화
+        //  - 키가 있고 값이 문자열(공백 제외)이면 해당 값으로 설정하고 반대편 필드는 null
+        //  - 동시에 둘 다 "값"을 보내면 400
+        if (minorPresent) {
+            if (minorExplicitNull) {
+                u.setMinorDepartment(null);                 // 명시적 삭제
+                // 반대편 유지(요구사항대로)
+            } else if (org.springframework.util.StringUtils.hasText(req.getMinor())) {
+                u.setMinorDepartment(req.getMinor().trim()); // 값 설정
+                u.setDoubleMajorDepartment(null);            // 상호배타
+            } // else: 빈 문자열이면 무시(유지)
+        }
+        if (doubleMajorPresent) {
+            if (doubleMajorExplicitNull) {
+                u.setDoubleMajorDepartment(null);           // 명시적 삭제
+                // 반대편 유지
+            } else if (org.springframework.util.StringUtils.hasText(req.getDoubleMajor())) {
+                u.setDoubleMajorDepartment(req.getDoubleMajor().trim());
+                u.setMinorDepartment(null);                 // 상호배타
+            } // else: 빈 문자열이면 무시(유지)
         }
 
-        // 3) 부전공/복수전공 상호배타 업데이트
-        boolean hasMinor  = StringUtils.hasText(req.getMinor());
-        boolean hasDouble = StringUtils.hasText(req.getDoubleMajor());
-        if (hasMinor && hasDouble) {
+        // 둘 다 '값'을 동시에 보낸 경우 막기(명시적 null은 허용)
+        if (minorPresent && doubleMajorPresent
+                && !minorExplicitNull && !doubleMajorExplicitNull
+                && org.springframework.util.StringUtils.hasText(req.getMinor())
+                && org.springframework.util.StringUtils.hasText(req.getDoubleMajor())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "부전공과 복수전공은 동시에 설정할 수 없습니다.");
         }
-        if (req.getMinor() != null) { // 빈문자면 null로 저장(비우기 허용)
-            u.setMinorDepartment(toNullIfBlank(req.getMinor()));
-            if (StringUtils.hasText(req.getMinor())) {
-                u.setDoubleMajorDepartment(null);
-            }
-        }
-        if (req.getDoubleMajor() != null) {
-            u.setDoubleMajorDepartment(toNullIfBlank(req.getDoubleMajor()));
-            if (StringUtils.hasText(req.getDoubleMajor())) {
-                u.setMinorDepartment(null);
-            }
-        }
 
-        // 4) 프로필 이미지 저장 (있을 때만)
-        if (profileImage != null && !profileImage.isEmpty()) {
+        // --- 프로필 이미지 ---
+        // 요구사항 유지: 파일 파트가 없거나 비어 있으면 삭제(null), 있으면 저장
+        if (profileImage == null || profileImage.isEmpty()) {
+            u.setProfileImageUrl(null); // DB 삭제
+        } else {
             String storagePath = fileStorageService.save(profileImage, "profiles/" + u.getId());
-            // 혹시 "/files/"가 앞에 붙어 넘어오는 경우 제거
             if (storagePath.startsWith("/files/")) {
                 storagePath = storagePath.substring("/files/".length());
             }
-            u.setProfileImageUrl(storagePath);  // DB에는 "profiles/5/증명사진.jpg" 형태로 저장
+            u.setProfileImageUrl(storagePath);
         }
 
         userRepository.save(u);
-
-        // 5) 갱신 후 조회 DTO로 반환 (현재 시각 기준 자동 계산 + 캡)
-        return getMyBasicInfo(userId);
+        return getMyBasicInfo(userId); // 응답은 기존 조회 포맷
     }
 
     private static String toNullIfBlank(String s) {
