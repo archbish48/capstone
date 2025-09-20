@@ -103,7 +103,9 @@ public class NoticeService {
                     notice.getText(),
                     notice.getAuthor().getId(),
                     notice.getAuthor().getUsername(),
+                    notice.getAuthor().getDepartment(), //추가
                     notice.getAuthor().getRoleType().name(),
+                    notice.getAuthor().getProfileImageUrl(),    //추가
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -139,7 +141,9 @@ public class NoticeService {
                 notice.getTitle(),
                 notice.getText(),
                 notice.getAuthor().getId(),
+                notice.getAuthor().getUsername(),
                 notice.getDepartment(),
+                notice.getAuthor().getProfileImageUrl(),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt(),
                 imageItems,
@@ -176,7 +180,9 @@ public class NoticeService {
                     notice.getText(),
                     notice.getAuthor().getId(),
                     notice.getAuthor().getUsername(),
+                    notice.getAuthor().getDepartment(),
                     notice.getAuthor().getRoleType().name(),
+                    notice.getAuthor().getProfileImageUrl(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -210,7 +216,9 @@ public class NoticeService {
                     notice.getText(),
                     notice.getAuthor().getId(),
                     notice.getAuthor().getUsername(),
+                    notice.getAuthor().getDepartment(),
                     notice.getAuthor().getRoleType().name(),
+                    notice.getAuthor().getProfileImageUrl(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -239,7 +247,9 @@ public class NoticeService {
                     notice.getText(),
                     notice.getAuthor().getId(),
                     notice.getAuthor().getUsername(),
+                    notice.getAuthor().getDepartment(),
                     notice.getAuthor().getRoleType().name(),
+                    notice.getAuthor().getProfileImageUrl(),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -431,21 +441,27 @@ public class NoticeService {
 
     @Transactional(readOnly = true)
     public Page<NotificationList> getMyNotifications(User me, Pageable pageable) {
-        Page<Notification> page =
-                notificationRepository.findByReceiverOrderUnreadFirst(me, pageable);
+        Page<Notification> page = notificationRepository.findByReceiverOrderUnreadFirst(me, pageable);
 
-        List<NotificationList> items = page.getContent().stream()
-                .map(n -> new NotificationList(
-                        n.getId(),
-                        n.getNotice().getId(),
-                        n.getNotice().getTitle(),
-                        n.getNotice().getDepartment(),
-                        n.isRead(),
-                        n.getCreatedAt()
-                ))
-                .toList();
+        return page.map(n -> {
+            Notice notice = n.getNotice();
+            User author = notice.getAuthor(); // ← 여기로 접근
 
-        return new PageImpl<>(items, pageable, page.getTotalElements());
+            // 기본 이미지가 필요하면 Optional.ofNullable(...).orElse("/images/default-profile.png")
+            String profileUrl = author.getProfileImageUrl();
+
+            return new NotificationList(
+                    n.getId(),
+                    notice.getId(),
+                    notice.getTitle(),
+                    notice.getDepartment(),
+                    n.isRead(),
+                    n.getCreatedAt(),
+                    author.getId(),
+                    author.getUsername(),
+                    profileUrl
+            );
+        });
     }
 
     //  선택 알림 읽음 처리
@@ -487,7 +503,9 @@ public class NoticeService {
                 notice.getTitle(),
                 notice.getText(),
                 notice.getAuthor().getId(),
+                notice.getAuthor().getUsername(),
                 notice.getDepartment(),
+                notice.getAuthor().getProfileImageUrl(),
                 notice.getCreatedAt(),      // NoticeResponse 에 createdAt 필드가 있다면 유지
                 notice.getUpdatedAt(),
                 imageItems,                 // ← id+url 리스트

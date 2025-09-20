@@ -9,6 +9,8 @@ import lombok.Getter;
 public class BookmarkAuthorResponse {
     private Long authorId;
     private String authorName;
+    private String department;  //추가
+    private String authorProfileImageUrl;   //추가
     private RoleType roleType;
     private boolean bookmarked;
 }

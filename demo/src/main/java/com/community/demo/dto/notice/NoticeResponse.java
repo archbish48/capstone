@@ -14,7 +14,9 @@ public class NoticeResponse {
     private String text;
 
     private Long authorId;
+    private String authorName;
     private String department;
+    private String authorProfileImageUrl;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

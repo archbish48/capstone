@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
+//@JsonInclude(JsonInclude.Include.NON_NULL)    임시 NON NULL 제외
 public class NoticeListResponse {
     private Long id;
     private String title;
@@ -19,7 +19,10 @@ public class NoticeListResponse {
 
     private Long authorId;
     private String authorName;
+    private String authorDepartment;
     private String authorRole;
+
+    private String authorProfileImageUrl;
 
     private LocalDateTime createdAt;   // 필요 없으면 추후 제거
     private LocalDateTime updatedAt;

@@ -30,6 +30,12 @@ public class WebConfig implements WebMvcConfigurer {    //정적 리소스 매�
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(busyInterceptor)
-                .addPathPatterns("/**");
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/files/**",          // ← 정적 파일은 제외
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/actuator/**"
+                );;
     }
 }

@@ -272,6 +272,12 @@ public class CommunityService {
         int commentCount = commentRepository.countByPostId(post.getId());
         boolean isBookmarked = bookmarkRepository.existsByUserAndPost(me, post);
 
+        // ✅ null 안전 접근 (필요시)
+        String profileUrl = null;
+        if (post.getAuthor() != null) {
+            profileUrl = post.getAuthor().getProfileImageUrl(); // 이름 다르면 수정
+        }
+
         return new CommunityResponse(
                 post.getId(),
                 post.getTitle(),
@@ -280,6 +286,7 @@ public class CommunityService {
                 post.getAuthor().getUsername(),
                 post.getAuthor().getDepartment(),
                 post.getAuthor().getRoleType().name(),
+                profileUrl,
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 images,

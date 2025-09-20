@@ -72,7 +72,7 @@ public class BookmarkService {
             var a = b.getAuthor();
             map.putIfAbsent(
                     a.getId(),
-                    new BookmarkAuthorResponse(a.getId(), a.getUsername(), a.getRoleType(), true)
+                    new BookmarkAuthorResponse(a.getId(), a.getUsername(), a.getDepartment(), a.getProfileImageUrl(), a.getRoleType(),true)
             );
         }
         return new ArrayList<>(map.values());

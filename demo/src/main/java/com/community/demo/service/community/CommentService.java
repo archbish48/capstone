@@ -41,7 +41,9 @@ public class CommentService {
                 c.getId(),
                 c.getAuthor().getId(),
                 c.getContent(),
+                c.getAuthor().getUsername(),
                 c.getAuthor().getDepartment(),
+                c.getAuthor().getProfileImageUrl(),
                 c.getCreatedAt(),
                 c.getUpdatedAt()
         ));
@@ -59,7 +61,7 @@ public class CommentService {
         c.setContent(content);
         commentRepo.save(c);
 
-        return new CommentResponse(c.getId(), c.getAuthor().getId(), c.getContent(), me.getDepartment(), c.getCreatedAt(), c.getUpdatedAt());
+        return new CommentResponse(c.getId(), c.getAuthor().getId(), c.getContent(), c.getAuthor().getUsername(), c.getAuthor().getDepartment(), c.getAuthor().getProfileImageUrl(), c.getCreatedAt(), c.getUpdatedAt());
     }
     // 댓글 수정
     @Transactional
@@ -85,7 +87,9 @@ public class CommentService {
                 c.getId(),
                 c.getAuthor().getId(),
                 c.getContent(),
+                c.getAuthor().getUsername(),
                 c.getAuthor().getDepartment(),
+                c.getAuthor().getProfileImageUrl(),
                 c.getCreatedAt(),
                 c.getUpdatedAt()
         );

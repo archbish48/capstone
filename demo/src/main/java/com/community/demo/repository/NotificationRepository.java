@@ -14,6 +14,9 @@ import java.util.List;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
+    @EntityGraph(attributePaths = {"notice", "notice.author"})
+    Page<Notification> findByReceiverOrderByCreatedAtDesc(User receiver, Pageable pageable);
+
     // 선택된 알림 읽음 처리
     @Modifying
     @Query("UPDATE Notification n SET n.read = true WHERE n.receiver = :receiver AND n.id IN :ids")
@@ -36,13 +39,18 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     int deleteByReceiverAndNotice(@Param("receiver") User receiver,
                                   @Param("noticeId") Long noticeId);
 
-    @EntityGraph(attributePaths = {"notice"})
-    @Query("""
-        select n
-          from Notification n
-         where n.receiver = :receiver
-         order by n.read asc, n.createdAt desc
-    """)
+    @EntityGraph(attributePaths = {"notice", "notice.author"})
+    @Query(
+            value = """
+        select n from Notification n
+        where n.receiver = :receiver
+        order by n.read asc, n.createdAt desc, n.id desc
+      """,
+            countQuery = """
+        select count(n) from Notification n
+        where n.receiver = :receiver
+      """
+    )
     Page<Notification> findByReceiverOrderUnreadFirst(@Param("receiver") User receiver, Pageable pageable);
 
     @Modifying
