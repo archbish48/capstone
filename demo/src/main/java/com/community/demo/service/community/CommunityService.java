@@ -11,6 +11,7 @@ import com.community.demo.dto.community.CommunityUpdateRequest;
 import com.community.demo.dto.community.ImageItemResponse;
 import com.community.demo.repository.*;
 import com.community.demo.service.notice.FileStorageService;
+import com.community.demo.service.user.PublicUrlResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,7 @@ public class CommunityService {
     private final CommentRepository commentRepository;
     private final ReactionRepository reactionRepository;
     private final FileStorageService fileStorageService;
+    private final PublicUrlResolver url;
 
     // 권한 체크: ADMIN / MANAGER 이면 항상 허용, 아니면 작성자 본인만 허용
     private static final EnumSet<RoleType> CAN_EDIT_ANY =
@@ -264,19 +266,21 @@ public class CommunityService {
 
     // 응답 변환
     private CommunityResponse toResponse(Community post, User me, String myReaction) {
-        //  이미지 id+url로 매핑
+        // 이미지 id+url (절대 URL로 변환)
         List<ImageItemResponse> images = post.getImages().stream()
-                .map(img -> new ImageItemResponse(img.getId(), img.getImageUrl()))
+                .map(img -> new ImageItemResponse(
+                        img.getId(),
+                        url.toAbsolute(img.getImageUrl())   // ← 절대 URL
+                ))
                 .toList();
 
         int commentCount = commentRepository.countByPostId(post.getId());
         boolean isBookmarked = bookmarkRepository.existsByUserAndPost(me, post);
 
-        // ✅ null 안전 접근 (필요시)
-        String profileUrl = null;
-        if (post.getAuthor() != null) {
-            profileUrl = post.getAuthor().getProfileImageUrl(); // 이름 다르면 수정
-        }
+        // 작성자 프로필 (절대 URL 변환 + null 안전)
+        String profileUrl = (post.getAuthor() == null)
+                ? null
+                : url.toAbsolute(post.getAuthor().getProfileImageUrl());  // ← 절대 URL
 
         return new CommunityResponse(
                 post.getId(),
@@ -286,7 +290,7 @@ public class CommunityService {
                 post.getAuthor().getUsername(),
                 post.getAuthor().getDepartment(),
                 post.getAuthor().getRoleType().name(),
-                profileUrl,
+                profileUrl,               // ← 절대 URL 반영
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 images,

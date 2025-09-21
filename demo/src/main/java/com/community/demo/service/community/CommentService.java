@@ -7,6 +7,7 @@ import com.community.demo.domain.user.User;
 import com.community.demo.dto.community.CommentResponse;
 import com.community.demo.repository.CommentRepository;
 import com.community.demo.repository.CommunityRepository;
+import com.community.demo.service.user.PublicUrlResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ public class CommentService {
 
     private final CommentRepository commentRepo;
     private final CommunityRepository communityRepo;
+    private final PublicUrlResolver url;
 
     // 댓글 목록 (페이징)
     @Transactional(readOnly = true)
@@ -43,7 +45,7 @@ public class CommentService {
                 c.getContent(),
                 c.getAuthor().getUsername(),
                 c.getAuthor().getDepartment(),
-                c.getAuthor().getProfileImageUrl(),
+                url.toAbsolute(c.getAuthor().getProfileImageUrl()),
                 c.getCreatedAt(),
                 c.getUpdatedAt()
         ));
@@ -89,7 +91,7 @@ public class CommentService {
                 c.getContent(),
                 c.getAuthor().getUsername(),
                 c.getAuthor().getDepartment(),
-                c.getAuthor().getProfileImageUrl(),
+                url.toAbsolute(c.getAuthor().getProfileImageUrl()),
                 c.getCreatedAt(),
                 c.getUpdatedAt()
         );

@@ -450,7 +450,7 @@ public class NoticeService {
             User author = notice.getAuthor(); // ← 여기로 접근
 
             // 기본 이미지가 필요하면 Optional.ofNullable(...).orElse("/images/default-profile.png")
-            String profileUrl = author.getProfileImageUrl();
+            String profileUrl = url.toAbsolute(notice.getAuthor().getProfileImageUrl());
 
             return new NotificationList(
                     n.getId(),

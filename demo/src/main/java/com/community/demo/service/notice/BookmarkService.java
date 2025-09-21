@@ -5,6 +5,7 @@ import com.community.demo.domain.user.User;
 import com.community.demo.dto.bookmark.BookmarkAuthorResponse;
 import com.community.demo.repository.BookmarkRepository;
 import com.community.demo.repository.UserRepository;
+import com.community.demo.service.user.PublicUrlResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class BookmarkService {
 
     private final BookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
+    private final PublicUrlResolver url;
 
     //  북마크 등록 (작성자 ID 기준)
     public void addBookmark(User me, Long authorId) {
@@ -72,7 +74,7 @@ public class BookmarkService {
             var a = b.getAuthor();
             map.putIfAbsent(
                     a.getId(),
-                    new BookmarkAuthorResponse(a.getId(), a.getUsername(), a.getDepartment(), a.getProfileImageUrl(), a.getRoleType(),true)
+                    new BookmarkAuthorResponse(a.getId(), a.getUsername(), a.getDepartment(), url.toAbsolute(a.getProfileImageUrl()), a.getRoleType(),true)
             );
         }
         return new ArrayList<>(map.values());
