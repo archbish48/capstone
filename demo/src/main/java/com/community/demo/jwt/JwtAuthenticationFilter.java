@@ -43,6 +43,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 uri.startsWith("/auth/") ||
                         uri.startsWith("/v3/api-docs") ||
                         uri.startsWith("/swagger-ui") ||
+                        uri.startsWith("/files/") ||            //  파일 공개 로직 추가
+                        uri.startsWith("/profiles/") ||
                         "/error".equals(uri)
                         // 필요시 프리플라이트 옵선스는 통과
                         || "OPTIONS".equalsIgnoreCase(request.getMethod()); // [CHANGED] CORS preflight 스킵(선택)

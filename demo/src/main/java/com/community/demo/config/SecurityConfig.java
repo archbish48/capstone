@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/files/**").permitAll()   // 파일 접근 허용
+                        .requestMatchers("/files/**", "/profiles/**").permitAll() //프로필 이미지 접근 허용
                         .requestMatchers("/error").permitAll()  // error 열기
 
                         // notices (공지사항) 관련 규칙

@@ -11,6 +11,7 @@ import com.community.demo.repository.BookmarkRepository;
 import com.community.demo.repository.NoticeRepository;
 import com.community.demo.repository.NotificationRepository;
 import com.community.demo.repository.UserRepository;
+import com.community.demo.service.user.PublicUrlResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -44,6 +45,7 @@ public class NoticeService {
     private final BookmarkRepository bookmarkRepository;
     private final FileStorageService fileStorageService;
     private final BookmarkService bookmarkService;
+    private final PublicUrlResolver url;
 
     private static final EnumSet<RoleType> WRITER_ROLES =
             EnumSet.of(RoleType.STAFF, RoleType.MANAGER, RoleType.ADMIN);
@@ -105,7 +107,7 @@ public class NoticeService {
                     notice.getAuthor().getUsername(),
                     notice.getAuthor().getDepartment(), //추가
                     notice.getAuthor().getRoleType().name(),
-                    notice.getAuthor().getProfileImageUrl(),    //추가
+                    url.toAbsolute(notice.getAuthor().getProfileImageUrl()),    //추가
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -143,7 +145,7 @@ public class NoticeService {
                 notice.getAuthor().getId(),
                 notice.getAuthor().getUsername(),
                 notice.getDepartment(),
-                notice.getAuthor().getProfileImageUrl(),
+                url.toAbsolute(notice.getAuthor().getProfileImageUrl()),
                 notice.getCreatedAt(),
                 notice.getUpdatedAt(),
                 imageItems,
@@ -182,7 +184,7 @@ public class NoticeService {
                     notice.getAuthor().getUsername(),
                     notice.getAuthor().getDepartment(),
                     notice.getAuthor().getRoleType().name(),
-                    notice.getAuthor().getProfileImageUrl(),
+                    url.toAbsolute(notice.getAuthor().getProfileImageUrl()),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -218,7 +220,7 @@ public class NoticeService {
                     notice.getAuthor().getUsername(),
                     notice.getAuthor().getDepartment(),
                     notice.getAuthor().getRoleType().name(),
-                    notice.getAuthor().getProfileImageUrl(),
+                    url.toAbsolute(notice.getAuthor().getProfileImageUrl()),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -249,7 +251,7 @@ public class NoticeService {
                     notice.getAuthor().getUsername(),
                     notice.getAuthor().getDepartment(),
                     notice.getAuthor().getRoleType().name(),
-                    notice.getAuthor().getProfileImageUrl(),
+                    url.toAbsolute(notice.getAuthor().getProfileImageUrl()),
                     notice.getCreatedAt(),
                     notice.getUpdatedAt(),
                     imageItems,
@@ -505,7 +507,7 @@ public class NoticeService {
                 notice.getAuthor().getId(),
                 notice.getAuthor().getUsername(),
                 notice.getDepartment(),
-                notice.getAuthor().getProfileImageUrl(),
+                url.toAbsolute(notice.getAuthor().getProfileImageUrl()),
                 notice.getCreatedAt(),      // NoticeResponse 에 createdAt 필드가 있다면 유지
                 notice.getUpdatedAt(),
                 imageItems,                 // ← id+url 리스트
