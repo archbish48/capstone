@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -189,45 +190,65 @@ public class MyPageService {
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
-        // (생략) 이름/학과/학번/gradeLabel → 앵커 갱신 로직은 기존 그대로
+        // --- 학과 업데이트 ---
+        if (StringUtils.hasText(req.getDepartment())) {
+            u.setDepartment(req.getDepartment().trim());
+        }
 
-        // --- 부전공/복수전공 업데이트 ---
-        // 규칙:
-        //  - 키가 없으면 아무 것도 하지 않음(유지)
-        //  - 키가 있고 값이 null이면 해당 필드만 null로 초기화
-        //  - 키가 있고 값이 문자열(공백 제외)이면 해당 값으로 설정하고 반대편 필드는 null
-        //  - 동시에 둘 다 "값"을 보내면 400
+        // --- 학년/학기(gradeLabel) 업데이트 ---
+        if (StringUtils.hasText(req.getGradeLabel())) {
+            String label = req.getGradeLabel().trim(); // 예: "1학년 2학기"
+            try {
+                int gradeYear = 1;
+                int semester = 1;
+                if (label.contains("학년")) {
+                    String yearPart = label.substring(0, label.indexOf("학년")).trim();
+                    gradeYear = Integer.parseInt(yearPart);
+                }
+                if (label.contains("학기")) {
+                    String semPart = label.substring(label.indexOf("학년") + 2, label.indexOf("학기")).trim();
+                    semester = Integer.parseInt(semPart);
+                }
+                gradeYear = clampGrade(gradeYear);
+                semester = clampSemester(semester);
+                updateMyAnchor(userId, gradeYear, semester, LocalDate.now(ZoneId.of("Asia/Seoul")));
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "gradeLabel 형식이 잘못되었습니다. (예: '1학년 2학기')");
+            }
+        }
+
+        // --- 부전공 업데이트 ---
         if (minorPresent) {
             if (minorExplicitNull) {
-                u.setMinorDepartment(null);                 // 명시적 삭제
-                // 반대편 유지(요구사항대로)
-            } else if (org.springframework.util.StringUtils.hasText(req.getMinor())) {
-                u.setMinorDepartment(req.getMinor().trim()); // 값 설정
-                u.setDoubleMajorDepartment(null);            // 상호배타
-            } // else: 빈 문자열이면 무시(유지)
-        }
-        if (doubleMajorPresent) {
-            if (doubleMajorExplicitNull) {
-                u.setDoubleMajorDepartment(null);           // 명시적 삭제
-                // 반대편 유지
-            } else if (org.springframework.util.StringUtils.hasText(req.getDoubleMajor())) {
-                u.setDoubleMajorDepartment(req.getDoubleMajor().trim());
-                u.setMinorDepartment(null);                 // 상호배타
-            } // else: 빈 문자열이면 무시(유지)
+                u.setMinorDepartment(null); // 명시적 삭제
+            } else if (StringUtils.hasText(req.getMinor())) {
+                u.setMinorDepartment(req.getMinor().trim());
+                u.setDoubleMajorDepartment(null); // 상호배타
+            }
         }
 
-        // 둘 다 '값'을 동시에 보낸 경우 막기(명시적 null은 허용)
+        // --- 복수전공 업데이트 ---
+        if (doubleMajorPresent) {
+            if (doubleMajorExplicitNull) {
+                u.setDoubleMajorDepartment(null); // 명시적 삭제
+            } else if (StringUtils.hasText(req.getDoubleMajor())) {
+                u.setDoubleMajorDepartment(req.getDoubleMajor().trim());
+                u.setMinorDepartment(null); // 상호배타
+            }
+        }
+
+        // --- 부전공 + 복수전공 동시 설정 방지 ---
         if (minorPresent && doubleMajorPresent
                 && !minorExplicitNull && !doubleMajorExplicitNull
-                && org.springframework.util.StringUtils.hasText(req.getMinor())
-                && org.springframework.util.StringUtils.hasText(req.getDoubleMajor())) {
+                && StringUtils.hasText(req.getMinor())
+                && StringUtils.hasText(req.getDoubleMajor())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "부전공과 복수전공은 동시에 설정할 수 없습니다.");
         }
 
-        // --- 프로필 이미지 ---
-        // 요구사항 유지: 파일 파트가 없거나 비어 있으면 삭제(null), 있으면 저장
+        // --- 프로필 이미지 업데이트 ---
         if (profileImage == null || profileImage.isEmpty()) {
-            u.setProfileImageUrl(null); // DB 삭제
+            // 프런트에서 파일 필드를 아예 안 보냈거나 빈 파일 보낸 경우 → 기존 DB 값 삭제
+            u.setProfileImageUrl(null);
         } else {
             String storagePath = fileStorageService.save(profileImage, "profiles/" + u.getId());
             if (storagePath.startsWith("/files/")) {
@@ -239,6 +260,8 @@ public class MyPageService {
         userRepository.save(u);
         return getMyBasicInfo(userId); // 응답은 기존 조회 포맷
     }
+
+
 
     private static String toNullIfBlank(String s) {
         return (s == null || s.isBlank()) ? null : s;
@@ -267,16 +290,5 @@ public class MyPageService {
         u.setProgressAnchorSemester(semester);
         u.setProgressAnchorDate(anchorDate);
         userRepository.save(u);
-    }
-
-    private Integer tryDeriveEntryYearFromStudentNumber(String studentNumber) {
-        if (!StringUtils.hasText(studentNumber)) return null;
-        String s = studentNumber.trim();
-        if (s.length() >= 4 && s.substring(0, 4).chars().allMatch(Character::isDigit)) {
-            try {
-                return Integer.parseInt(s.substring(0, 4));
-            } catch (NumberFormatException ignored) {}
-        }
-        return null;
     }
 }

@@ -7,34 +7,42 @@ import com.community.demo.dto.inquiry.InquiryAdminListItemResponse;
 import com.community.demo.dto.inquiry.InquiryAdminPageResponse;
 import com.community.demo.repository.InquiryRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminInquiryService {
 
     private final InquiryRepository inquiryRepository;
+    private final PublicUrlResolver url;
 
     @Transactional(readOnly = true)
     public InquiryAdminPageResponse<InquiryAdminListItemResponse> list(int page, int size) {
-        // 최신순(작성 시간이 최근인 것이 위)
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Inquiry> result = inquiryRepository.findAll(pageable);
 
         var items = result.getContent().stream()
-                .map(i -> new InquiryAdminListItemResponse(
-                        i.getId(),
-                        i.getTitle(),
-                        i.getContent(),               // ADMIN 이므로 내용 포함
-                        i.getAuthorName(),
-                        i.getAuthorDepartment(),
-                        i.getAuthorProfileImageUrl(),
-                        i.getCreatedAt()
-                ))
+                .map(i -> {
+                    String raw = i.getAuthorProfileImageUrl();
+                    String abs = url.toAbsolute(raw); // null-safe 변환
+                    log.debug("Mapping Inquiry id={} rawProfile='{}' -> absProfile='{}'", i.getId(), raw, abs);
+
+                    return new InquiryAdminListItemResponse(
+                            i.getId(),
+                            i.getTitle(),
+                            i.getContent(),               // ADMIN 이므로 내용 포함
+                            i.getAuthorName(),
+                            i.getAuthorDepartment(),
+                            abs,                          // 절대 URL로 변경해서 넣음
+                            i.getCreatedAt()
+                    );
+                })
                 .collect(Collectors.toList());
 
         return new InquiryAdminPageResponse<>(
@@ -47,6 +55,7 @@ public class AdminInquiryService {
                 result.isLast()
         );
     }
+
 
     @Transactional
     public void deleteBatch(InquiryAdminDeleteRequest req) {
