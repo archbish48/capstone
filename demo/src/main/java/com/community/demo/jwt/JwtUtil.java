@@ -5,6 +5,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -15,8 +16,14 @@ import java.util.Date;
 public class JwtUtil {
 
     // TODO: 실제 환경에선 application.yml에서 주입받고, 최소 32바이트(HS256) 이상 사용
-    private final String accessSecret = "12345678901234567890123456789012";
-    private final String refreshSecret = "abcdefghijabcdefghijabcdefghij12";
+    private final String accessSecret;
+    private final String refreshSecret;
+
+    public JwtUtil(@Value("${jwt.secret.access}") String accessSecret,
+                   @Value("${jwt.secret.refresh}") String refreshSecret) {
+        this.accessSecret = accessSecret;
+        this.refreshSecret = refreshSecret;
+    }
 
     private final long accessExpirationMs  = 1000L * 60 * 60;        // 60분
     private final long refreshExpirationMs = 1000L * 60 * 60 * 24 * 7; // 7일
