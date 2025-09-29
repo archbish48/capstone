@@ -5,6 +5,10 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+
+Properties.env
+
+
 ### STS ###
 .apt_generated
 .classpath
@@ -36,5 +40,3 @@ out/
 ### VS Code ###
 .vscode/
 
-# Git 추적 대상에서 제외할 파일
-/demo/src/main/resources/application.properties
