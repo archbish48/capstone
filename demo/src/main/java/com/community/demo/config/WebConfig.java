@@ -27,15 +27,23 @@ public class WebConfig implements WebMvcConfigurer {    //정적 리소스 매�
                 .setCachePeriod(3600);
     }
 
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(busyInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
-                        "/files/**",          // ← 정적 파일은 제외
+                        // /route 를 추가하여 인터셉터 제외
+                        "/route/files/**",
+                        "/route/swagger-ui/**",
+                        "/route/v3/api-docs/**",
+                        "/route/actuator/**",
+
+                        //  기존 경로도 일단 유지 (안전을 위해)
+                        "/files/**",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/actuator/**"
-                );;
+                );
     }
 }

@@ -36,18 +36,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.warn("[JWT] JwtAuthenticationFilter bean initialized: {}", this);
     }
 
+//    @Override
+//    protected boolean shouldNotFilter(HttpServletRequest request) {
+//        String uri = request.getRequestURI();
+//        boolean skip =
+//                uri.startsWith("/auth/") ||
+//                        uri.startsWith("/v3/api-docs") ||
+//                        uri.startsWith("/swagger-ui") ||
+//                        uri.startsWith("/files/") ||            //  파일 공개 로직 추가
+//                        uri.startsWith("/profiles/") ||
+//                        "/error".equals(uri)
+//                        // 필요시 프리플라이트 옵선스는 통과
+//                        || "OPTIONS".equalsIgnoreCase(request.getMethod()); // [CHANGED] CORS preflight 스킵(선택)
+//        log.debug("[JWT] shouldNotFilter={} {} {}", skip, request.getMethod(), uri);
+//        return skip;
+//    }
+
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(HttpServletRequest request) { // route 경로 추가 후 filter
         String uri = request.getRequestURI();
         boolean skip =
                 uri.startsWith("/auth/") ||
+                        // 👈 JWT 필터 제외 경로에 /route/ 경로 추가
+                        uri.startsWith("/route/auth/") ||
                         uri.startsWith("/v3/api-docs") ||
+                        uri.startsWith("/route/v3/api-docs") ||
                         uri.startsWith("/swagger-ui") ||
-                        uri.startsWith("/files/") ||            //  파일 공개 로직 추가
+                        uri.startsWith("/route/swagger-ui") ||
+                        uri.startsWith("/files/") ||
+                        uri.startsWith("/route/files/") ||      // 파일 경로도 /route 추가
                         uri.startsWith("/profiles/") ||
-                        "/error".equals(uri)
-                        // 필요시 프리플라이트 옵선스는 통과
-                        || "OPTIONS".equalsIgnoreCase(request.getMethod()); // [CHANGED] CORS preflight 스킵(선택)
+                        uri.startsWith("/route/profiles/") ||   // 프로필 경로도 /route 추가
+                        "/error".equals(uri) ||
+                        "/route/error".equals(uri) ||           // error 경로도 /route 추가
+                        "OPTIONS".equalsIgnoreCase(request.getMethod());
+
         log.debug("[JWT] shouldNotFilter={} {} {}", skip, request.getMethod(), uri);
         return skip;
     }

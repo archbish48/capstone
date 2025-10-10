@@ -11,6 +11,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -34,13 +35,30 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
 
     @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers(
+                // /route/v3/api-docs (API 명세 경로)
+                "/route/v3/api-docs/**",
+                "/v3/api-docs/**",
+
+                // /route/swagger-ui/ (Swagger UI HTML, JS, CSS 등 모든 정적 파일)
+                "/route/swagger-ui/**",
+                "/swagger-ui/**",
+
+                // /route/swagger-ui.html 및 /swagger-ui.html
+                "/route/swagger-ui.html",
+                "/swagger-ui.html"
+        );
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/auth/**").permitAll()    //인증 관련 경로만 남기기
                         .requestMatchers("/files/**", "/profiles/**").permitAll() //프로필 이미지 접근 허용
                         .requestMatchers("/error").permitAll()  // error 열기
 
