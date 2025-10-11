@@ -38,7 +38,8 @@ public class LoginService {
     }
 
     private boolean isValidEmail(String email) {    //이메일 형식은 ~~@yiu.ac.kr 형식 고정
-        return email != null && email.matches("^[A-Za-z0-9._%+-]+@yiu\\.ac\\.kr$");
+        return email.contains("@");
+        //return email != null && email.matches("^[A-Za-z0-9._%+-]+@yiu\\.ac\\.kr$");   //잠깐 취소(테스트용)
     }
 
     private boolean isValidPassword(String password) {
