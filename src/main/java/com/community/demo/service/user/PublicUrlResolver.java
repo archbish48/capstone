@@ -10,8 +10,32 @@ public class PublicUrlResolver {
 
     private final String publicBaseUrl;
 
-    public PublicUrlResolver(@Value("${app.public-base-url}") String publicBaseUrl) {
-        this.publicBaseUrl = publicBaseUrl;
+    // 1. PUBLIC_BASE_URL (app.public-base-url) 값 주입
+    // 2. server.servlet.context-path 값 주입 (없으면 빈 문자열 사용)
+    public PublicUrlResolver(
+            @Value("${app.public-base-url}") String rawBaseUrl,
+            @Value("${server.servlet.context-path:}") String contextPath //  context-path 주입
+    ) {
+        String finalUrl = rawBaseUrl;
+
+        // contextPath가 존재하고, finalUrl에 이미 contextPath가 포함되어 있지 않다면 결합
+        if (StringUtils.hasText(contextPath)) {
+            // finalUrl 끝 슬래시 정리
+            if (finalUrl.endsWith("/")) {
+                finalUrl = finalUrl.substring(0, finalUrl.length() - 1);
+            }
+            // contextPath를 /route 형식으로 정리 (시작 슬래시 확인)
+            if (!contextPath.startsWith("/")) {
+                contextPath = "/" + contextPath;
+            }
+
+            // finalUrl에 contextPath가 이미 포함되어 있지 않은 경우에만 추가
+            if (!finalUrl.endsWith(contextPath)) {
+                finalUrl = finalUrl + contextPath;
+            }
+        }
+
+        this.publicBaseUrl = finalUrl;
     }
 
     public String toAbsolute(String stored) {
@@ -21,9 +45,10 @@ public class PublicUrlResolver {
             return stored;
         }
 
-        String rel = stored.startsWith("/files/") ? stored : "/files/" + stored;
+        // /files/ 접두사가 없으면 추가
+        String rel = stored.startsWith("files/") ? "/" + stored : "/files/" + stored;
 
-        // 설정 값으로 주입된 외부 URL을 사용합니다.
+        // publicBaseUrl이 이제 /route를 포함하고 있으므로 바로 결합
         return publicBaseUrl + rel;
     }
 }

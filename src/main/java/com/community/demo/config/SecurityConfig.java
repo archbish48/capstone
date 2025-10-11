@@ -47,7 +47,11 @@ public class SecurityConfig {
 
                 // /route/swagger-ui.html 및 /swagger-ui.html
                 "/route/swagger-ui.html",
-                "/swagger-ui.html"
+                "/swagger-ui.html",
+
+                // files 경로를 보안 필터 체인에서 완전히 제외
+                "/files/**",
+                "/route/files/**"
         );
     }
 
