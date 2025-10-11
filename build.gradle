@@ -29,6 +29,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security' //spring security
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+
 	// WebClient (reactive)
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
