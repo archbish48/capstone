@@ -45,8 +45,16 @@ public class PublicUrlResolver {
             return stored;
         }
 
-        // /files/ 접두사가 없으면 추가
-        String rel = stored.startsWith("files/") ? "/" + stored : "/files/" + stored;
+        String rel;
+        // 1. stored 경로가 이미 "/files/" 또는 "files/"로 시작하는지 확인합니다.
+        if (stored.startsWith("/files/")) {
+            rel = stored; // 이미 완벽한 상대 경로이므로 그대로 사용합니다.
+        } else if (stored.startsWith("files/")) {
+            rel = "/" + stored; // "files/"로 시작하면 앞에 슬래시만 추가합니다.
+        } else {
+            // 2. "/files/" 접두사가 없으면 추가합니다. (이 경우가 프로필 이미지 케이스입니다)
+            rel = "/files/" + stored;
+        }
 
         // publicBaseUrl이 이제 /route를 포함하고 있으므로 바로 결합
         return publicBaseUrl + rel;

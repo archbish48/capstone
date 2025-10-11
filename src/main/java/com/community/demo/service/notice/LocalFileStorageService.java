@@ -67,8 +67,12 @@ public class LocalFileStorageService implements FileStorageService {    // 파�
     public void init() throws IOException {
         Path candidate = Paths.get(configuredDir);
         if (!candidate.isAbsolute()) {
-            ApplicationHome home = new ApplicationHome(LocalFileStorageService.class);
-            candidate = home.getDir().toPath().resolve(candidate);
+//            ApplicationHome home = new ApplicationHome(LocalFileStorageService.class);
+//            candidate = home.getDir().toPath().resolve(candidate);
+
+            // 👈 ApplicationHome 대신, 현재 작업 디렉토리(CWD)를 가져와 결합합니다.
+            // IntelliJ 설정에서 CWD를 프로젝트 루트로 설정했다면 이 경로를 따라갑니다.
+            candidate = Paths.get("").toAbsolutePath().resolve(candidate);
         }
         rootDir = candidate.toAbsolutePath().normalize();
         Files.createDirectories(rootDir);
