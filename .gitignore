@@ -6,7 +6,8 @@ build/
 !**/src/test/**/build/
 
 
-.env
+*.env
+Properties.env
 
 
 ### STS ###
