@@ -5,6 +5,7 @@ import com.community.demo.domain.user.User;
 import com.community.demo.service.community.CommentService;
 import com.community.demo.service.community.CommunityService;
 import com.community.demo.service.community.ReactionService;
+import com.community.demo.service.notice.FileStorageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,16 +14,21 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,6 +40,29 @@ public class CommunityController {
     private final ReactionService reactionService;      //  토글 담당
     private final CommentService commentService;        //  댓글 담당
     private final ObjectMapper objectMapper;
+    private final FileStorageService fileStorageService;
+
+    //이미지 미리보기 API 1015추가버전
+    @GetMapping("/files/{filename:.+}")
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+        try {
+            // FileStorageService를 통해 실제 파일을 Resource 객체로 불러옵니다.
+            Resource resource = fileStorageService.loadAsResource(filename);
+
+            // 파일 확장자를 보고 적절한 Content-Type(MIME 타입)을 설정합니다.
+            Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(resource.getFilename());
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType.orElse(MediaType.APPLICATION_OCTET_STREAM))
+                    .body(resource);
+
+        } catch (FileNotFoundException e) {
+            // 파일을 찾을 수 없으면 404 응답
+            return ResponseEntity.notFound().build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     // 게시글 작성
     // 문자열 하나로 받아서 ,로 나눈 뒤 List<String>으로 변환
