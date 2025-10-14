@@ -48,13 +48,22 @@ public class MyBriefProfileResponse {
         );
     }
 
-    // 저장값("profiles/5/xxx.jpg" 또는 "/files/profiles/5/xxx.jpg") → 절대 URL
     private static String toPublicAbsoluteUrl(String stored) {
         if (!StringUtils.hasText(stored)) return null;
-        String rel = stored.startsWith("/files/") ? stored : "/files/" + stored;
-        return ServletUriComponentsBuilder
-                .fromCurrentContextPath()   // http(s)://host:port
-                .path(rel)
-                .toUriString();
+
+        // stored 값이 어떤 형태든 항상 "/files/..."로 시작하도록 경로를 보정합니다.
+        String rel = stored;
+        if (!stored.startsWith("/files/")) {
+            if (stored.startsWith("files/")) {
+                // "files/..."로 시작하면 앞에 "/"만 붙여줍니다.
+                rel = "/" + stored;
+            } else {
+                // 둘 다 아니면 "/files/"를 통째로 붙여줍니다.
+                rel = "/files/" + stored;
+            }
+        }
+
+        // ✨ 전체 URL 빌더를 사용하지 않고, 보정된 상대 경로(rel)를 바로 반환합니다.
+        return rel;
     }
 }
