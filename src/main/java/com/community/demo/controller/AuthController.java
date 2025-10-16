@@ -42,7 +42,7 @@ public class AuthController {
 
     // 로그인
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody @Valid LoginRequest request){
+    public ResponseEntity<?> login(@RequestBody @Valid LoginRequest request){
         return loginService.login(request.getEmail(), request.getPassword());
     }
 

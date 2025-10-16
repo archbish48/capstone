@@ -38,8 +38,8 @@ public class LoginService {
     }
 
     private boolean isValidEmail(String email) {    //이메일 형식은 ~~@yiu.ac.kr 형식 고정
-        return email.contains("@");
-        //return email != null && email.matches("^[A-Za-z0-9._%+-]+@yiu\\.ac\\.kr$");   //잠깐 취소(테스트용)
+        //return email.contains("@");
+        return email != null && email.matches("^[A-Za-z0-9._%+-]+@yiu\\.ac\\.kr$");   //잠깐 취소(테스트용)
     }
 
     private boolean isValidPassword(String password) {
@@ -106,7 +106,7 @@ public class LoginService {
     // 회원가입
     public void signup(String username, String password, String email, String student_number, RoleType roleType, String department) {
         // 중복 검사
-        if(userRepository.findByUsername(username).isPresent()){throw new IllegalArgumentException("이미 존재하는 사용자입니다.");}
+        // if(userRepository.findByUsername(username).isPresent()){throw new IllegalArgumentException("이미 존재하는 사용자입니다.");}
         if(userRepository.findByEmail(email).isPresent()) {throw new IllegalArgumentException("이미 등록된 이메일입니다.");}
         // 유효성 검사
         if(!isValidEmail(email)){ throw new IllegalArgumentException("올바르지 않은 이메일 형식입니다.");}
@@ -123,23 +123,39 @@ public class LoginService {
         userRepository.save(user);
     }
 
-    //로그인
-    public Map<String, String> login(String email, String password) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    public ResponseEntity<?> login(String email, String password) {
 
-        String hashedPassword = PasswordUtil.hashPassword(password); // 비밀번호 해싱
-        if(!user.getPassword().equals(hashedPassword)){ //해싱된 비밀번호가 일치하지 않는다면
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        // 사용자를 찾고, 없을 경우 Optional로 받습니다.
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+
+        // 사용자가 존재하지 않을 경우 404 Not Found 응답을 반환
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND) // 404 Not Found 상태 코드
+                    .body("사용자를 찾을 수 없습니다.");
         }
+
+        User user = optionalUser.get();
+        String hashedPassword = PasswordUtil.hashPassword(password);
+
+        // 비밀번호가 일치하지 않을 경우 401 Unauthorized 응답을 반환
+        if (!user.getPassword().equals(hashedPassword)) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED) // 401 Unauthorized 상태 코드
+                    .body("비밀번호가 일치하지 않습니다.");
+        }
+
+        // 로그인 성공 시 토큰과 함께 200 OK 응답을 반환
         String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getRoleType());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId());
         refreshTokenStore.put(user.getId(), refreshToken);
 
-        return Map.of(
+        Map<String, String> tokens = Map.of(
                 "accessToken", accessToken,
                 "refreshToken", refreshToken
         );
+
+        return ResponseEntity.ok(tokens); // 200 OK
     }
 
 
