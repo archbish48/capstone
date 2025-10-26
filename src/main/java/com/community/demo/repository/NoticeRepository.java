@@ -1,6 +1,7 @@
 package com.community.demo.repository;
 
 import com.community.demo.domain.notice.Notice;
+import com.community.demo.domain.notice.NoticeType;
 import com.community.demo.domain.user.User;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.Page;
@@ -109,5 +110,14 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
     Page<Notice> findByAuthorIdAndKeyword(@Param("authorId") Long authorId,
                                           @Param("keyword") String keyword,
                                           Pageable pageable);
+
+
+    /**
+     * '제목'과 '타입'으로 공지사항을 조회합니다. (Update 로직에서 사용)
+     * @param title 공지사항 제목
+     * @param noticeType 공지사항 타입 (SCHOOL)
+     * @return
+     */
+    Optional<Notice> findByTitleAndNoticeType(String title, NoticeType noticeType);
 
 }

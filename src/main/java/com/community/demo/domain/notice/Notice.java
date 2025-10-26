@@ -52,6 +52,14 @@ public class Notice {       //공지사항 테이블
 
     @PrePersist  void onCreate() { createdAt = LocalDateTime.now(); }
     @PreUpdate   void onUpdate() { updatedAt = LocalDateTime.now(); }
+
+    /**
+     * 공지사항 타입 (SCHOOL: 크롤링, INTERNAL: 내부 작성)
+     */
+    @Enumerated(EnumType.STRING)
+    private NoticeType noticeType;
+    
+
     public void removeAttachment(Attachment attachment) {
         attachments.remove(attachment);
         attachment.setNotice(null);

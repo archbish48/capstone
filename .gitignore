@@ -10,6 +10,30 @@ build/
 Properties.env
 
 
+# 이미지 파일
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.bmp
+
+# 문서 및 첨부파일
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.hwp
+
+# 압축 파일
+*.zip
+*.tar
+*.gz
+
+
 ### STS ###
 .apt_generated
 .classpath

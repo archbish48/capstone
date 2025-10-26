@@ -55,6 +55,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) { // route 경로 추가 후 filter
         String uri = request.getRequestURI();
+
+        //  크롤러 POST 요청은 JWT 필터를 통과시킴
+//        if (uri.equals("/route/notices/school") && "POST".equalsIgnoreCase(request.getMethod())) {
+//            log.debug("[JWT] Skipping filter for Crawler POST: {}", uri);
+//            return true; // true = 이 필터를 건너뜀 (should NOT filter)
+//        }
+
         boolean skip =
                 uri.startsWith("/auth/") ||
                         // 👈 JWT 필터 제외 경로에 /route/ 경로 추가

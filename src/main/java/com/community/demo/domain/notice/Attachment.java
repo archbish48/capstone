@@ -24,7 +24,7 @@ public class Attachment {
     private Notice notice;
 
 
-    // ✅ equals & hashCode 필수
+    // equals & hashCode 필수
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

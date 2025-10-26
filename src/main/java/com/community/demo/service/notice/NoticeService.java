@@ -1,9 +1,6 @@
 package com.community.demo.service.notice;
 
-import com.community.demo.domain.notice.Attachment;
-import com.community.demo.domain.notice.Notice;
-import com.community.demo.domain.notice.NoticeImage;
-import com.community.demo.domain.notice.Notification;
+import com.community.demo.domain.notice.*;
 import com.community.demo.domain.user.RoleType;
 import com.community.demo.domain.user.User;
 import com.community.demo.dto.notice.*;
@@ -484,6 +481,201 @@ public class NoticeService {
         return notificationRepository.countByReceiverAndReadFalse(me);
     }
 
+
+    /**
+     * (API 2: POST /api/notices/school)
+     * 크롤링한 공지사항을 '생성' 또는 '업데이트'합니다.
+     * 1. 'title' 과 'noticeType=SCHOOL' 로 기존 공지사항을 검색합니다.
+     * 2. (신규) 없으면 새로 생성합니다.
+     * 3. (기존) 있으면 'text' 내용을 비교합니다.
+     * 4. (기존+변경) 'text' 가 다르면, 기존 공지사항을 덮어쓰고(파일 포함) 'createdAt' 를 갱신합니다.
+     * 5. (기존+동일) 'text' 가 같으면, 아무것도 하지 않고 종료합니다.
+     *
+     * @return NoticeResponse (신규 생성 또는 업데이트된 경우) / null (변경 사항이 없는 경우)
+     */
+    @Transactional
+    public NoticeResponse createSchoolNotice(SchoolNoticeCreateDto dto,
+                                             List<MultipartFile> imageFiles,
+                                             List<MultipartFile> attachmentFiles) {
+
+        log.info("크롤링 공지 처리 시작: {}", dto.getTitle());
+
+        // 1. '작성자' 유저 조회 (기존 로직 유지)
+        String authorUsername = dto.getDepartment();
+        if (authorUsername == null || authorUsername.isBlank()) {
+            throw new IllegalArgumentException("작성자 학과(department) 정보가 누락되었습니다.");
+            //일단 오류안터지게 로그만찎히게 수정
+        }
+        User authorUser = userRepository.findByUsername(authorUsername)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "크롤링 '"+ authorUsername +"'에 해당하는 유저를 DB에서 찾을 수 없습니다."
+                ));
+
+        // 2. [변경] 'title'로 기존 공지사항 검색
+        Optional<Notice> existingNoticeOpt =
+                noticeRepository.findByTitleAndNoticeType(dto.getTitle(), NoticeType.SCHOOL);
+
+        // 3. 분기 처리
+        if (existingNoticeOpt.isEmpty()) {
+            // === [A] 신규 공지사항: 새로 생성 ===
+            log.info("신규 공지사항으로 처리: {}", dto.getTitle());
+            return createNewSchoolNotice(dto, authorUser, imageFiles, attachmentFiles);
+        } else {
+            // === [B] 기존 공지사항: 텍스트 비교 후 업데이트 ===
+            Notice existingNotice = existingNoticeOpt.get();
+
+            // 텍스트(본문) 비교 (Objects.equals는 null-safe)
+            if (Objects.equals(existingNotice.getText(), dto.getText())) {
+                // 본문 내용이 같으면 수정할 필요 없음
+                log.info("기존 공지사항과 내용 동일 (스킵): {}", dto.getTitle());
+                return null; // 변경 사항 없음
+            }
+
+            // === [C] 텍스트가 다름: 덮어쓰기(Update) 수행 ===
+            log.info("기존 공지사항 덮어쓰기: {}", dto.getTitle());
+            return updateExistingSchoolNotice(existingNotice, dto, authorUser, imageFiles, attachmentFiles);
+        }
+    }
+
+    // [Helper] 신규 SCHOOL 공지 생성 로직 (createSchoolNotice 에서 분리)
+
+    private NoticeResponse createNewSchoolNotice(SchoolNoticeCreateDto dto, User authorUser,
+                                                 List<MultipartFile> imageFiles,
+                                                 List<MultipartFile> attachmentFiles) {
+
+        Notice notice = new Notice();
+        notice.setTitle(dto.getTitle());
+        notice.setText(dto.getText());
+        notice.setAuthor(authorUser);
+        notice.setDepartment(dto.getDepartment());
+        notice.setNoticeType(NoticeType.SCHOOL);
+
+        if (dto.getOriginalCreatedAt() == null) {
+            throw new IllegalArgumentException("신규 공지 생성 시 originalCreatedAt 시간이 누락되었습니다.");
+        }
+        notice.setCreatedAt(dto.getOriginalCreatedAt());
+
+        // --- ▼ [수정됨] ---
+        List<NoticeImage> images = (imageFiles == null ? List.<MultipartFile>of() : imageFiles).stream()
+                .map(file -> {
+                    String logicalPath = fileStorageService.save(file, "notices/images");
+                    NoticeImage img = new NoticeImage();
+                    img.setImageUrl("/files/" + logicalPath);
+                    img.setNotice(notice);
+                    return img;
+                })
+                .toList();
+        notice.setImages(images);
+
+        // --- ▼ [수정됨] ---
+        List<Attachment> attachments = (attachmentFiles == null ? List.<MultipartFile>of() : attachmentFiles).stream()
+                .map(file -> {
+                    String logicalPath = fileStorageService.save(file, "notices/attachments");
+                    Attachment att = new Attachment();
+                    att.setFileUrl("/files/" + logicalPath);
+                    att.setNotice(notice);
+                    return att;
+                })
+                .toList();
+        notice.setAttachments(attachments);
+
+        noticeRepository.save(notice);
+
+        sendNotifications(notice, authorUser);
+
+        return buildNoticeResponse(notice, false);
+    }
+
+    // [Helper] 기존 SCHOOL 공지 업데이트 로직 (createSchoolNotice 에서 분리)
+
+    private NoticeResponse updateExistingSchoolNotice(Notice notice, SchoolNoticeCreateDto dto, User authorUser,
+                                                      List<MultipartFile> imageFiles,
+                                                      List<MultipartFile> attachmentFiles) {
+
+        notice.setText(dto.getText());
+        notice.setAuthor(authorUser);
+        notice.setDepartment(dto.getDepartment());
+
+        if (dto.getOriginalCreatedAt() == null) {
+            throw new IllegalArgumentException("공지 업데이트 시 originalCreatedAt 시간이 누락되었습니다.");
+        }
+        notice.setCreatedAt(dto.getOriginalCreatedAt());
+
+
+        notice.getImages().clear();
+        notice.getAttachments().clear();
+
+
+        List<NoticeImage> newImages = (imageFiles == null ? List.<MultipartFile>of() : imageFiles).stream()
+                .map(file -> {
+                    String logicalPath = fileStorageService.save(file, "notices/images");
+                    NoticeImage img = new NoticeImage();
+                    img.setImageUrl("/files/" + logicalPath);
+                    img.setNotice(notice);
+                    return img;
+                })
+                .toList();
+        notice.setImages(newImages);
+
+
+        List<Attachment> newAttachments = (attachmentFiles == null ? List.<MultipartFile>of() : attachmentFiles).stream()
+                .map(file -> {
+                    String logicalPath = fileStorageService.save(file, "notices/attachments");
+                    Attachment att = new Attachment();
+                    att.setFileUrl("/files/" + logicalPath);
+                    att.setNotice(notice);
+                    return att;
+                })
+                .toList();
+        notice.setAttachments(newAttachments);
+
+
+        return buildNoticeResponse(notice, false);
+    }
+
+    /**
+     * [Helper] 알림 전송 로직 (중복 제거)
+     */
+    private void sendNotifications(Notice notice, User authorUser) {
+        List<User> deptUsers = userRepository.findByDepartmentAndRoleType(notice.getDepartment(), RoleType.STUDENT);
+        List<User> subscribers = bookmarkRepository.findSubscribersOfAuthor(authorUser.getId());
+        Set<Long> seen = new HashSet<>();
+        List<Notification> notifications = new ArrayList<>();
+        Stream.concat(deptUsers.stream(), subscribers.stream())
+                .filter(u -> seen.add(u.getId()))
+                .forEach(u -> notifications.add(new Notification(u, notice)));
+        if (!notifications.isEmpty()) {
+            notificationRepository.saveAll(notifications);
+        }
+    }
+
+    /**
+     * [Helper] NoticeResponse DTO 변환 로직 (중복 제거)
+     */
+    private NoticeResponse buildNoticeResponse(Notice notice, boolean isBookmarked) {
+        User author = notice.getAuthor();
+        List<FileItemResponse> imageItems = notice.getImages().stream()
+                .map(img -> new FileItemResponse(img.getId(), url.toAbsolute(img.getImageUrl())))
+                .toList();
+        List<FileItemResponse> attachmentItems = notice.getAttachments().stream()
+                .map(att -> new FileItemResponse(att.getId(), url.toAbsolute(att.getFileUrl())))
+                .toList();
+
+        return new NoticeResponse(
+                notice.getId(),
+                notice.getTitle(),
+                notice.getText(),
+                author.getId(),
+                author.getUsername(),
+                notice.getDepartment(),
+                url.toAbsolute(author.getProfileImageUrl()),
+                notice.getCreatedAt(),
+                notice.getUpdatedAt(),
+                imageItems,
+                attachmentItems,
+                isBookmarked
+        );
+    }
 
     /* --------- 헬퍼 --------- */
     private Notice findOr404(Long id) {

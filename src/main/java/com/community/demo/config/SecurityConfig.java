@@ -1,10 +1,12 @@
 package com.community.demo.config;
 
 
+import com.community.demo.jwt.ApiKeyAuthFilter;
 import com.community.demo.jwt.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -33,6 +35,26 @@ public class SecurityConfig {
 
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final ApiKeyAuthFilter apiKeyAuthFilter;
+
+
+    // JwtAuthenticationFilter 가 @Component 로 자동 등록되는 것을 방지합니다.
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false); // 👈 [핵심] 자동 등록 비활성화
+        return registration;
+    }
+
+    // ApiKeyAuthFilter 가 @Component 로 자동 등록되는 것을 방지합니다.
+    @Bean
+    public FilterRegistrationBean<ApiKeyAuthFilter> apiKeyAuthFilterRegistration(ApiKeyAuthFilter filter) {
+        FilterRegistrationBean<ApiKeyAuthFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false); // 👈 [핵심] 자동 등록 비활성화
+        return registration;
+    }
+
+
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
@@ -66,11 +88,16 @@ public class SecurityConfig {
                         .requestMatchers("/files/**", "/profiles/**").permitAll() //프로필 이미지 접근 허용
                         .requestMatchers("/error").permitAll()  // error 열기
 
-                        // notices (공지사항) 관련 규칙
+                        //  (FastAPI 크롤러용)
+                        // [신규] 'ROLE_CRAWLER'만 /notices/school 에 POST 허용
+                        .requestMatchers(HttpMethod.POST, "/notices/school").hasRole("CRAWLER")
+
                         .requestMatchers(HttpMethod.GET, "/notices/**").permitAll()
                         .requestMatchers(HttpMethod.POST,   "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
                         .requestMatchers(HttpMethod.PATCH,  "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/notices/**").hasAnyRole("STAFF","MANAGER","ADMIN")
+
+
 
                         // notifications 알림창 관련 규칙
                         .requestMatchers("/notifications/**").authenticated()
@@ -115,6 +142,7 @@ public class SecurityConfig {
 
 
 
+
                         // 그 외 모든 요청은 전부 인증 필요
                         .anyRequest().authenticated()
                 )
@@ -135,7 +163,28 @@ public class SecurityConfig {
                             res.sendError(HttpServletResponse.SC_FORBIDDEN);
                         })
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                //.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                // 경로에 따라 JWT 필터와 API Key 필터를 분기
+                .addFilterBefore(
+                        (request, response, chain) -> {
+
+                            HttpServletRequest httpRequest = (HttpServletRequest) request;
+                            String uri = httpRequest.getRequestURI();
+                            String method = httpRequest.getMethod();
+
+                            // 람다는 '전체 경로' ( '/route' 있음 )
+                            String crawlerPath = "/route/notices/school";
+
+                            if (uri.equals(crawlerPath) && method.equals(HttpMethod.POST.name())) {
+                                // 크롤러 경로는 ApiKeyAuthFilter 실행
+                                apiKeyAuthFilter.doFilter(request, response, chain);
+                            } else {
+                                // 그 외 경로는 JwtAuthenticationFilter 실행
+                                jwtFilter.doFilter(request, response, chain);
+                            }
+                        },
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }

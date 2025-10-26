@@ -238,6 +238,40 @@ public class NoticeController {
 
 
 
+    /**
+     * (POST) 크롤링한 새 공지사항 '생성' 또는 '수정'
+     */
+    @PostMapping(value = "/school", consumes = {"multipart/form-data"})
+    public ResponseEntity<NoticeResponse> createSchoolNotice( //  반환 타입 NoticeResponse
+                                                              @RequestPart("dto") SchoolNoticeCreateDto dto,
+                                                              @RequestPart(value = "images", required = false) List<MultipartFile> imageFiles,
+                                                              @RequestPart(value = "attachments", required = false) List<MultipartFile> attachmentFiles) {
+
+        try {
+            // Service는 생성/수정 시 NoticeResponse를, 변경 없을 시 null을 반환
+            NoticeResponse response = noticeService.createSchoolNotice(dto, imageFiles, attachmentFiles);
+
+            if (response == null) {
+                // [변경 없음]
+                return ResponseEntity.status(HttpStatus.OK) // 200 OK
+                        .body(null); // 혹은 "변경 사항 없음" 메시지
+            } else {
+                // [생성 또는 수정 완료]
+                // ※ 참고: 201(Created)과 200(OK)을 구분하려면 Service에서 boolean 등으로
+                // 신규/수정 여부를 추가로 반환받아야 함.
+                // 지금은 단순화를 위해 '처리 완료' 의미로 200 OK를 반환.
+                return ResponseEntity.ok(response);
+            }
+
+        } catch (Exception e) {
+            // ... (기존 예외 처리) ...
+            throw new RuntimeException("공지사항 처리 중 오류 발생", e);
+        }
+    }
+
+
+
+
 
 
 }
