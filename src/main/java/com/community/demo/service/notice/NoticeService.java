@@ -29,6 +29,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -487,9 +488,9 @@ public class NoticeService {
      * 크롤링한 공지사항을 '생성' 또는 '업데이트'합니다.
      * 1. 'title' 과 'noticeType=SCHOOL' 로 기존 공지사항을 검색합니다.
      * 2. (신규) 없으면 새로 생성합니다.
-     * 3. (기존) 있으면 'text' 내용을 비교합니다.
-     * 4. (기존+변경) 'text' 가 다르면, 기존 공지사항을 덮어쓰고(파일 포함) 'createdAt' 를 갱신합니다.
-     * 5. (기존+동일) 'text' 가 같으면, 아무것도 하지 않고 종료합니다.
+     * 3. (기존) 있으면 'text' 내용과 첨부파일 리스트를 비교합니다.
+     * 4. (기존+변경) 'text' 가 다르고 첨부파일 리스트가 다르다면, 기존 공지사항을 덮어쓰고(파일 포함) 'createdAt' 를 갱신합니다.
+     * 5. (기존+동일) 'text' 가 같고 첨부파일 리스트가 같다면, 아무것도 하지 않고 종료합니다.
      *
      * @return NoticeResponse (신규 생성 또는 업데이트된 경우) / null (변경 사항이 없는 경우)
      */
@@ -500,18 +501,17 @@ public class NoticeService {
 
         log.info("크롤링 공지 처리 시작: {}", dto.getTitle());
 
-        // 1. '작성자' 유저 조회 (기존 로직 유지)
+        // 1. '작성자' 유저 조회
         String authorUsername = dto.getDepartment();
         if (authorUsername == null || authorUsername.isBlank()) {
             throw new IllegalArgumentException("작성자 학과(department) 정보가 누락되었습니다.");
-            //일단 오류안터지게 로그만찎히게 수정
         }
         User authorUser = userRepository.findByUsername(authorUsername)
                 .orElseThrow(() -> new NoSuchElementException(
                         "크롤링 '"+ authorUsername +"'에 해당하는 유저를 DB에서 찾을 수 없습니다."
                 ));
 
-        // 2. [변경] 'title'로 기존 공지사항 검색
+        // 2. 'title'로 기존 공지사항 검색
         Optional<Notice> existingNoticeOpt =
                 noticeRepository.findByTitleAndNoticeType(dto.getTitle(), NoticeType.SCHOOL);
 
@@ -521,21 +521,49 @@ public class NoticeService {
             log.info("신규 공지사항으로 처리: {}", dto.getTitle());
             return createNewSchoolNotice(dto, authorUser, imageFiles, attachmentFiles);
         } else {
-            // === [B] 기존 공지사항: 텍스트 비교 후 업데이트 ===
+            // === [B] 기존 공지사항: 내용 및 파일 비교 후 업데이트 결정 ===
             Notice existingNotice = existingNoticeOpt.get();
 
-            // 텍스트(본문) 비교 (Objects.equals는 null-safe)
-            if (Objects.equals(existingNotice.getText(), dto.getText())) {
-                // 본문 내용이 같으면 수정할 필요 없음
-                log.info("기존 공지사항과 내용 동일 (스킵): {}", dto.getTitle());
-                return null; // 변경 사항 없음
+            // 1. 기존 파일 이름 목록 생성 (이미지 + 첨부파일)
+            Set<String> existingFileNames = Stream.concat(
+                    existingNotice.getAttachments().stream()
+                            .map(att -> Paths.get(att.getFileUrl()).getFileName().toString()),
+                    existingNotice.getImages().stream()
+                            .map(img -> Paths.get(img.getImageUrl()).getFileName().toString())
+            ).collect(Collectors.toSet());
+
+            // ▼▼▼ [수정된 부분] ▼▼▼
+            // 2. 새로 수신된 파일 이름 목록 생성 (타입 추론 오류 해결)
+
+            // null일 경우 Stream.empty()를, 아니면 stream()을 반환하는 변수 2개 생성
+            Stream<MultipartFile> imageStream = (imageFiles == null) ? Stream.empty() : imageFiles.stream();
+            Stream<MultipartFile> attachmentStream = (attachmentFiles == null) ? Stream.empty() : attachmentFiles.stream();
+
+            Set<String> newFileNames = Stream.concat(
+                    imageStream.map(MultipartFile::getOriginalFilename),
+                    attachmentStream.map(MultipartFile::getOriginalFilename)
+            ).collect(Collectors.toSet());
+            // ▲▲▲ [수정된 부분] ▲▲▲
+
+            // 3. 텍스트 내용과 파일 목록이 모두 동일한지 검사
+            boolean textIsSame = Objects.equals(existingNotice.getText(), dto.getText());
+            boolean filesAreSame = existingFileNames.equals(newFileNames);
+
+            if (textIsSame && filesAreSame) {
+                // 본문 내용과 첨부파일 목록이 모두 같으면 수정할 필요 없음
+                log.info("기존 공지사항과 내용 및 첨부파일 동일 (스킵): {}", dto.getTitle());
+                return null; // 👈 덮어쓰기를 "건너뜀"
             }
 
-            // === [C] 텍스트가 다름: 덮어쓰기(Update) 수행 ===
-            log.info("기존 공지사항 덮어쓰기: {}", dto.getTitle());
+            // === [C] 텍스트 또는 파일이 다를 경우: 덮어쓰기(Update) 수행 ===
+            log.info("기존 공지사항 덮어쓰기 (내용 또는 파일 변경 감지): {}", dto.getTitle());
+
+            // [확인] authorUser를 포함하여 호출
             return updateExistingSchoolNotice(existingNotice, dto, authorUser, imageFiles, attachmentFiles);
         }
     }
+
+
 
     // [Helper] 신규 SCHOOL 공지 생성 로직 (createSchoolNotice 에서 분리)
 
@@ -592,45 +620,53 @@ public class NoticeService {
                                                       List<MultipartFile> imageFiles,
                                                       List<MultipartFile> attachmentFiles) {
 
+        // 1. 기본 정보 덮어쓰기
         notice.setText(dto.getText());
-        notice.setAuthor(authorUser);
+        notice.setAuthor(authorUser);       // 작성자(학과)가 변경되었을 수도 있으므로 덮어쓰기
         notice.setDepartment(dto.getDepartment());
 
+        // 2. 'createdAt'을 FastAPI가 보낸 시간으로 덮어쓰기
         if (dto.getOriginalCreatedAt() == null) {
             throw new IllegalArgumentException("공지 업데이트 시 originalCreatedAt 시간이 누락되었습니다.");
         }
         notice.setCreatedAt(dto.getOriginalCreatedAt());
+        // (@PreUpdate에 의해 'updatedAt'은 현재 시간으로 자동 갱신됨)
 
+        // 3. 파일 덮어쓰기 (orphanRemoval = true 방식)
 
+        // 3-1. 기존 컬렉션의 내용물을 비워 orphanRemoval 트리거
         notice.getImages().clear();
         notice.getAttachments().clear();
 
+        // 3-2. 새 이미지 파일 저장 및 기존 컬렉션에 추가
+        if (imageFiles != null) {
+            for (MultipartFile file : imageFiles) {
+                if (file.isEmpty()) continue;
+                String logicalPath = fileStorageService.save(file, "notices/images");
+                NoticeImage img = new NoticeImage();
+                img.setImageUrl("/files/" + logicalPath);
+                img.setNotice(notice);
+                notice.getImages().add(img); // 👈 setImages가 아닌 add 사용
+            }
+        }
 
-        List<NoticeImage> newImages = (imageFiles == null ? List.<MultipartFile>of() : imageFiles).stream()
-                .map(file -> {
-                    String logicalPath = fileStorageService.save(file, "notices/images");
-                    NoticeImage img = new NoticeImage();
-                    img.setImageUrl("/files/" + logicalPath);
-                    img.setNotice(notice);
-                    return img;
-                })
-                .toList();
-        notice.setImages(newImages);
+        // 3-3. 새 첨부 파일 저장 및 기존 컬렉션에 추가
+        if (attachmentFiles != null) {
+            for (MultipartFile file : attachmentFiles) {
+                if (file.isEmpty()) continue;
+                String logicalPath = fileStorageService.save(file, "notices/attachments");
+                Attachment att = new Attachment();
+                att.setFileUrl("/files/" + logicalPath);
+                att.setNotice(notice);
+                notice.getAttachments().add(att); // 👈 setAttachments가 아닌 add 사용
+            }
+        }
 
 
-        List<Attachment> newAttachments = (attachmentFiles == null ? List.<MultipartFile>of() : attachmentFiles).stream()
-                .map(file -> {
-                    String logicalPath = fileStorageService.save(file, "notices/attachments");
-                    Attachment att = new Attachment();
-                    att.setFileUrl("/files/" + logicalPath);
-                    att.setNotice(notice);
-                    return att;
-                })
-                .toList();
-        notice.setAttachments(newAttachments);
+        // 5. (선택) 업데이트 시에도 알림을 보내도록 함
+        sendNotifications(notice, authorUser);
 
-
-        return buildNoticeResponse(notice, false);
+        return buildNoticeResponse(notice, false); // DTO로 변환하여 반환
     }
 
     /**
