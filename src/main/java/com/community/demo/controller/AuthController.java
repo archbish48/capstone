@@ -36,8 +36,9 @@ public class AuthController {
 
     // 회원가입
     @PostMapping("/signup")
-    public void signup(@RequestBody @Valid SignupRequest request){
+    public ResponseEntity<String> signup(@RequestBody @Valid SignupRequest request){
         loginService.signup(request.getUsername(), request.getPassword(), request.getEmail(), request.getStudent_number(), request.getRole(), request.getDepartment());
+        return ResponseEntity.ok("회원가입 성공");
     }
 
     // 로그인
