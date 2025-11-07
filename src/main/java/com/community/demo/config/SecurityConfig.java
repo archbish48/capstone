@@ -84,9 +84,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()    //인증 관련 경로만 남기기
-                        .requestMatchers("/files/**", "/profiles/**").permitAll() //프로필 이미지 접근 허용
-                        .requestMatchers("/error").permitAll()  // error 열기
+                        // [수정] /auth/** 뿐만 아니라 /route/auth/** 도 permitAll
+                        .requestMatchers("/auth/**", "/route/auth/**").permitAll()
+                        // [수정] 다른 permitAll 경로들에도 /route/ 버전을 추가
+                        .requestMatchers("/files/**", "/route/files/**", "/profiles/**", "/route/profiles/**").permitAll()
+                        .requestMatchers("/error", "/route/error").permitAll()
 
                         //  (FastAPI 크롤러용)
                         // [신규] 'ROLE_CRAWLER'만 /notices/school 에 POST 허용
